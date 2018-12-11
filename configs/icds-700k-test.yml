@@ -402,8 +402,8 @@ services:
   pillowtop:  # will need to revamp this once combined pillows are rolled out
     storage_scales_with_nodes: True
     process:
-      cores_per_node: 16
-      ram_per_node: 48
+      cores_per_node: 8
+      ram_per_node: 16
       cores_per_sub_process: 0.5
       ram_per_sub_process: 0.7
       sub_processes:
@@ -428,8 +428,8 @@ services:
   celery:
     storage_scales_with_nodes: True
     process:
-      cores_per_node: 16
-      ram_per_node: 48
+      cores_per_node: 8
+      ram_per_node: 16
       cores_per_sub_process: 1
       ram_per_sub_process: 0.7
       sub_processes:
@@ -456,11 +456,11 @@ services:
       override_estimation_buffer: 0
 
   django:
-    usage_capacity_per_node: 25000
+    usage_capacity_per_node: 12500
     storage_scales_with_nodes: True
     process:
-      cores_per_node: 16
-      ram_per_node: 48
+      cores_per_node: 8
+      ram_per_node: 16
     storage:
       group: 'VM_other'
       static_baseline: 25GB
@@ -487,10 +487,10 @@ services:
       override_estimation_buffer: 0
 
   rabbitmq:  # limits for rabbitmq not clear
-    usage_capacity_per_node: 300000
+    usage_capacity_per_node: 600000
     process:
-      cores_per_node: 8
-      ram_per_node: 16
+      cores_per_node: 16
+      ram_per_node: 48
 
   formplayer:
     usage_capacity_per_node: 1000
