@@ -323,7 +323,7 @@ services:
       ram_per_node: 8
 
   kafka:
-    usage_capacity_per_node: 100000
+    usage_capacity_per_node: 400000
     min_nodes: 3
     storage:
       group: 'SAS'
@@ -331,8 +331,8 @@ services:
         - referenced_field: 'kafak_changes'
           unit_size: 500
     process:
-      cores_per_node: 4
-      ram_per_node: 8
+      cores_per_node: 16
+      ram_per_node: 32
 
   riakcs:
     usage_capacity_per_node: 50000
