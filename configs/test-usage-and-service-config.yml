@@ -1,0 +1,40 @@
+estimation_buffer: 0.2
+estimation_growth_factor: 0.025  # buffer increases by 2.5% per month
+storage_buffer: 0.25
+storage_display_unit: TB
+
+summary_dates:
+  - '2018-10'
+  - '2018-12'
+  - '2019-02'
+  - '2019-04'
+  - '2019-06'
+  - '2019-08'
+  - '2019-12'
+
+vm_os_storage_gb: 70
+vm_os_storage_group: 'VM_os'
+
+usage:
+  users:
+    model: 'date_range_value'
+    ranges:
+      - ['20170601', '20170801', 1000]
+  forms:
+    model: 'derived_factor'
+    start_with: 27039499
+    dependant_field: 'users'
+    factor: 600
+
+services:
+  pg_proxy:
+    usage_capacity_per_node: 250000
+    storage_scales_with_nodes: True
+    storage:
+      group: 'VM_other'
+      static_baseline: 100GB
+      add_buffer: False
+      override_estimation_buffer: 0
+    process:
+      cores_per_node: 16
+      ram_per_node: 48
