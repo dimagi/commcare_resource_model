@@ -1,3 +1,4 @@
+import os
 from io import StringIO
 from unittest import TestCase
 
@@ -6,9 +7,23 @@ from pandas.util.testing import assert_frame_equal
 
 from core.models import DateRangeValueModel, CumulativeModel, LimitedLifetimeModel, DerivedSum, \
     DerivedFactor, DateValueModel
+from core.generate import generate_usage_data
+from core.config import config_from_path
 
 
 class UsageModelTests(TestCase):
+    def test_generate_usage_data(self):
+        config_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..',
+                                   'configs', 'test-usage-config.yml')
+        config = config_from_path(config_file)
+        usage_data = generate_usage_data(config)
+        expected = """,users,forms
+                     2017-06-01,1000000,1000005000000
+                     2017-07-01,1000000,1000000000000
+                     2017-08-01,1000000,1000000000000
+                 """
+        assert_frame_equal(usage_data, self._from_csv(expected))
+
     def test_date_range_value(self):
         result = _get_user_data()
         expected = """,users
