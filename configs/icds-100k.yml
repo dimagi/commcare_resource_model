@@ -85,7 +85,7 @@ usage:
     model: 'derived_factor'
     dependant_field: 'cases_total'
     factor: 0.92
-  kafak_changes:
+  kafka_changes:
     model: 'derived_sum'
     dependant_fields: ['forms', 'cases', 'case_transactions', 'task_ledger_updates']  # sms
 
@@ -138,7 +138,7 @@ storage:
     group: 'SAS'
     static_redundancy_factor: 1
     data_models:
-      - referenced_field: 'kafak_changes'
+      - referenced_field: 'kafka_changes'
         unit_size: 500
   riak:
     group: 'SAS'

@@ -13,24 +13,12 @@ vm_os_storage_group: 'VM'
 
 usage:
   users:
-    model: 'date_value_list'
-    values:
+    model: 'date_range_value'
+    ranges:
       - ['20180901', 130000]
       - ['20181001', 140000]
-      - ['20181101', 250000]
-      - ['20181201', 250000]
-      - ['20190101', 250000]
-      - ['20190201', 250000]
-      - ['20190301', 250000]
-      - ['20190401', 500000]
-      - ['20190501', 500000]
-      - ['20190601', 500000]
-      - ['20190701', 500000]
-      - ['20190801', 500000]
-      - ['20190901', 500000]
-      - ['20191001', 500000]
-      - ['20191101', 500000]
-      - ['20191201', 500000]
+      - ['20181101', '20190301', 250000]
+      - ['20190401', '20191201', 500000]
   ls_users:
     model: 'derived_factor'
     dependant_field: 'users'
@@ -141,8 +129,8 @@ usage:
     model: 'derived_factor'
     dependant_field: 'sms_total'
     factor: 10  # sms (1) + smsbillables (1) + messagingevent (4) + messagingsubevent (4)
-  kafak_changes:
-    # we only keep kafak changes for 28 days so no need to calculate the cumulative amount
+  kafka_changes:
+    # we only keep kafka changes for 28 days so no need to calculate the cumulative amount
     model: 'derived_sum'
     dependant_fields:
       - 'forms'
@@ -244,7 +232,7 @@ services:
     storage:
       group: 'SAS'
       data_models:
-        - referenced_field: 'kafak_changes'
+        - referenced_field: 'kafka_changes'
           unit_size: 500
     process:
       cores_per_node: 4

@@ -5,10 +5,11 @@ from unittest import TestCase
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
 
-from core.models import DateRangeValueModel, CumulativeModel, LimitedLifetimeModel, DerivedSum, \
-    DerivedFactor, DateValueModel
+from core.models import CumulativeModel, LimitedLifetimeModel, DerivedSum, \
+    DerivedFactor, DateValueModel, BaselineWithGrowth
 from core.generate import generate_usage_data
 from core.config import config_from_path
+
 
 
 class UsageModelTests(TestCase):
@@ -102,9 +103,25 @@ class UsageModelTests(TestCase):
         """
         assert_frame_equal(result, self._from_csv(expected))
 
+    def test_baseline_with_growth(self):
+        user_data = _get_user_data()
+        result = BaselineWithGrowth('bg', 'users', 10, 2, 50).data_frame(user_data)
+        # month, value = baseline x users + startwith + monthly usage cumulative
+        # 2017-01-01, 1250 = 1000 + 50 + 200
+        # 2017-02-01, 1450 = 1000 + 50 + 200 + 200
+        # 2017-03-01, 2850 = 2000 + 50 + 200 + 200 + 400
+        # 2017-04-01, 3250 = 2000 + 50 + 200 + 200 + 400 + 400
+        expected = """,bg_baseline,bg_monthly,bg
+           2017-01-01,1000,200,1250
+           2017-02-01,1000,200,1450
+           2017-03-01,2000,400,2850
+           2017-04-01,2000,400,3250
+        """
+        assert_frame_equal(result, self._from_csv(expected))
+
 
 def _get_user_data():
-    model = DateRangeValueModel('users', [
+    model = DateValueModel('users', [
         ['20170101', '20170201', 100],
         ['20170301', '20170401', 200],
     ])

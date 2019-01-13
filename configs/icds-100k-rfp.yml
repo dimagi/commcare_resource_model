@@ -99,8 +99,8 @@ usage:
 #    model: 'derived_factor'
 #    dependant_field: 'users'
 #    factor: ?
-  kafak_changes:
-    # we only keep kafak changes for 28 days so no need to calculate the cumulative amount
+  kafka_changes:
+    # we only keep kafka changes for 28 days so no need to calculate the cumulative amount
     model: 'derived_sum'
     dependant_fields: ['forms', 'cases', 'case_transactions', 'task_ledger_updates']  # sms
 
@@ -203,7 +203,7 @@ services:
     storage:
       group: 'SAS'
       data_models:
-        - referenced_field: 'kafak_changes'
+        - referenced_field: 'kafka_changes'
           unit_size: 500
     process:
       cores_per_node: 4

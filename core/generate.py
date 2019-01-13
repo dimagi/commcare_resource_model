@@ -46,8 +46,10 @@ def _service_storage_data(config, service_def, usage_data):
             usage_data,
             service_def.storage.redundancy_factor
         )
-        if service_def.storage.add_buffer:
-            data_storage = data_storage * float(1 + config.storage_buffer)
+        buffer = config.storage_buffer
+        if service_def.storage.override_storage_buffer != None:
+            buffer = service_def.storage.override_storage_buffer
+        data_storage = data_storage * float(1 + buffer)
     else:
         static = service_def.storage.static_baseline_bytes * service_def.storage.redundancy_factor
         data_storage = pd.Series([static] * len(usage_data), index=usage_data.index)

@@ -45,6 +45,8 @@ The config file is split into 4 sections:
 | vm_os_storage_gb     | GB storage per VM for OS etc |
 | vm_os_storage_group  | Group name for OS storage |
 | summary_dates        | List of dates to generate summaries at. Date format: YYYY-MM |
+| usage                | See [Usage Config](#usage-config) section below |
+| service              | See [Service Config](#service-config) section below |
 
 
 ## Usage config
@@ -58,27 +60,20 @@ Each item in this section defines which 'model' it will use to simulate the usag
 The available models are as follows:
 
 ### Date range value
-This model assigns a specific number to each date range in a list.
+This model assigns a specific number to each date range in a list. If a range is only for a single month the end date can be omitted.
 
 Example:
 The follow example defined the number of users of the system
-in 2018 and 2019.
+in fro 2017-11 to 2019-12.
 
     users:
         model: 'date_range_value'
         ranges:
+          - ['20171101', 5000]
+          - ['20171201', 10000]
           - ['20180101', '20181201', 100000]
           - ['20190101', '20191201', 200000]
 
-## Date value
-This model is similar to the date range model but allows you
-to specify all the values individually.
-
-    users:
-        model: 'date_value_list'
-        values:
-            - ['20180901', 130000]
-            - ['20181001', 140000]
 
 ### Derived Factor
 Multiply another field by a fixed factor.
@@ -98,7 +93,7 @@ Sum multiple other fields
 Example:
 Total kafka changes
 
-    kafak_changes:
+    kafka_changes:
         model: 'derived_sum'
         dependant_fields: ['forms', 'cases', 'case_transactions']
 
@@ -123,6 +118,25 @@ Logs that get deleted after 2 months
         model: 'cumulative_limited_lifespan'
         dependant_field: 'device_logs'
         lifespan: 2
+
+## Baseline with monthly growth
+This is a combination model that simplifies modelling fields that have an initial
+amount and then grow over time at a constant rate.
+
+Example.
+Cases modeled as 600 per user initially with 50 new cases being added per month:
+
+    cases_total:
+        model: 'baseline_with_growth'
+        dependant_field: 'users'
+        baseline: 600
+        monthly_growth: 50
+        start_with: 2000000  # account for existing data
+
+This model also outputs the monthly and baseline fields for use in other calculations formatted as follows:
+
+* {name}_baseline
+* {name}_monthly
 
 ## Service config
 Each item in the service config defines a service which the system uses.
@@ -161,7 +175,7 @@ To accomplish this we can define the storage as follows:
       storage:
         group: 'VM_other'
         static_baseline: 50GB
-        add_buffer: False  # don't add storage buffer
+        override_storage_buffer: 0  # don't add storage buffer
         override_estimation_buffer: 0  # don't apply estimation buffer
 
 ### Process
