@@ -26,9 +26,9 @@ class UsageModelTests(TestCase):
         expected = """,pg_proxy,pg_proxy,pg_proxy,pg_proxy,pg_proxy,pg_proxy
                     ,Users,computed_data_frame,computed_data_frame,computed_data_frame,computed_data_frame,Data Storage
                     ,users,CPU,RAM,VMs,VMs Usage,storage
-                    2017-06-01,1000,16.0,48.0,1.0,1.0,100000000000.0
-                    2017-07-01,1000,16.0,48.0,1.0,1.0,100000000000.0
-                    2017-08-01,1000,16.0,48.0,1.0,1.0,100000000000.0
+                    2017-06-01,1000000,40.0,160.0,10.0,10.0,2325000000000.0
+                    2017-07-01,1000000,40.0,160.0,10.0,10.0,2325000000000.0
+                    2017-08-01,1000000,40.0,160.0,10.0,10.0,2325000000000.0
                 """
         assert_frame_equal(service_data, self._from_csv(expected))
 
