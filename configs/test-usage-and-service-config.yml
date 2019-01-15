@@ -14,7 +14,9 @@ usage:
   users:
     model: 'date_range_value'
     ranges:
-      - ['20170601', '20170801', 1000000]
+      - ['20170601', 1000000]
+      - ['20170701', 2000000]
+      - ['20170801', 3000000]
   forms:
     model: 'derived_factor'
     start_with: 5000000
