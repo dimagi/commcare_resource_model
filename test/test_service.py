@@ -23,14 +23,28 @@ class UsageModelTests(TestCase):
         config = config_from_path(config_file)
         usage_data = generate_usage_data(config)
         service_data = generate_service_data(config, usage_data)
-        expected = """,pg_proxy,pg_proxy,pg_proxy,pg_proxy,pg_proxy,pg_proxy
-                    ,Users,computed_data_frame,computed_data_frame,computed_data_frame,computed_data_frame,Data Storage
-                    ,users,CPU,RAM,VMs,VMs Usage,storage
-                    2017-06-01,1000000,40.0,160.0,10.0,10.0,2325000000000.0
-                    2017-07-01,1000000,40.0,160.0,10.0,10.0,2325000000000.0
-                    2017-08-01,1000000,40.0,160.0,10.0,10.0,2325000000000.0
-                """
-        assert_frame_equal(service_data, self._from_csv(expected))
+        expected_users = """,users
+            2017-06-01,1000000
+            2017-07-01,2000000
+            2017-08-01,3000000
+        """
+
+
+        expected_compute_values = """,CPU,RAM,VMs,VMs Usage
+            2017-06-01,40.0,160.0,10.0,10.0
+            2017-07-01,80.0,320.0,20.0,20.0
+            2017-08-01,120.0,480.0,30.0,30.0
+        """
+
+        expected_storage = """,storage
+            2017-06-01,2325000000000.0
+            2017-07-01,4575000000000.0
+            2017-08-01,6825000000000.0
+        """
+
+        assert_frame_equal(service_data.couchdb_meta.Users, self._from_csv(expected_users))
+        assert_frame_equal(service_data.couchdb_meta.Compute, self._from_csv(expected_compute_values))
+        assert_frame_equal(service_data.couchdb_meta["Data Storage"], self._from_csv(expected_storage))
 
     def test_data_frame(self):
         self._add_processes_and_subprocesses()
