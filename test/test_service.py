@@ -39,8 +39,8 @@ class UsageModelTests(TestCase):
         computed_data_frame = compute_model.data_frame(self.usage_data, self._get_data_storage())
         expected = """,CPU,RAM,VMs,VMs Usage,Additional VMs (storage),Additional VMs (RAM),RAM requirement
             2017-06-01,8.0,8.0,2.0,1.0,1.0,0.0,0.001
-            2017-07-01,8.0,8.0,2.0,1.0,1.0,0.0,0.001
-            2017-08-01,8.0,8.0,2.0,1.0,1.0,0.0,0.001
+            2017-07-01,8.0,8.0,3.0,1.0,2.0,0.0,0.002
+            2017-08-01,8.0,8.0,4.0,1.0,3.0,0.0,0.003
         """
         assert_frame_equal(computed_data_frame, self._from_csv(expected))
 
@@ -63,8 +63,8 @@ class UsageModelTests(TestCase):
         computed_data_frame = compute_model._calculate_usage_capacity_per_node(usage)
         expected = """,CPU,RAM,VMs
             2017-06-01,32.0,128.0,2.0
-            2017-07-01,32.0,128.0,2.0
-            2017-08-01,32.0,128.0,2.0
+            2017-07-01,64.0,256.0,4.0
+            2017-08-01,96.0,384.0,6.0
         """
         assert_frame_equal(computed_data_frame, self._from_csv(expected))
 
@@ -75,8 +75,8 @@ class UsageModelTests(TestCase):
         computed_data_frame = compute_model._calculate_max_storage_per_node_bytes(computed_data_frame, self._get_data_storage())
         expected = """,CPU,RAM,VMs,Additional VMs (storage)
             2017-06-01,32.0,128.0,2.0,0.0
-            2017-07-01,32.0,128.0,2.0,0.0
-            2017-08-01,32.0,128.0,2.0,0.0
+            2017-07-01,64.0,256.0,4.0,0.0
+            2017-08-01,96.0,384.0,6.0,0.0
             """
         assert_frame_equal(computed_data_frame, self._from_csv(expected))
 
@@ -88,8 +88,8 @@ class UsageModelTests(TestCase):
         computed_data_frame = compute_model._calculate_ram_model(self.usage_data, computed_data_frame)
         expected = """,CPU,RAM,VMs,Additional VMs (RAM),RAM requirement
             2017-06-01,32.0,128.0,2.0,0.0,0.001
-            2017-07-01,32.0,128.0,2.0,0.0,0.001
-            2017-08-01,32.0,128.0,2.0,0.0,0.001
+            2017-07-01,64.0,256.0,4.0,0.0,0.002
+            2017-08-01,96.0,384.0,6.0,0.0,0.003
             """
         assert_frame_equal(computed_data_frame, self._from_csv(expected))
 
@@ -98,8 +98,8 @@ class UsageModelTests(TestCase):
         data_storage = _service_storage_data(self.config, self.service_def, self.usage_data)
         expected = """,storage
             2017-06-01,1100000.0
-            2017-07-01,1100000.0
-            2017-08-01,1100000.0
+            2017-07-01,2200000.0
+            2017-08-01,3300000.0
             """
         assert_frame_equal(data_storage, self._from_csv(expected))
 
