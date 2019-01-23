@@ -130,6 +130,10 @@ class ClusterConfig(jsonobject.JsonObject):
         ]
 
 
-def config_from_path(config_path):
+def cluster_config_from_path(config_path):
     with open(config_path, 'r') as f:
         return ClusterConfig(yaml.load(f))
+
+def dict_config_from_path(config_path):
+    with open(config_path, 'r') as f:
+        return yaml.load(f)

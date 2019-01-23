@@ -1,0 +1,5 @@
+forms_monthly:
+  factor_start: .5
+  factor_end: 1.5
+  factor_step: .5
+  field_name: factor
