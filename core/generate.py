@@ -82,56 +82,72 @@ class ComputeModel(object):
     def data_frame(self, current_data_frame, data_storage):
         usage = current_data_frame[self.service_def.usage_field]
         if self.service_def.process.sub_processes:
-            processes = pd.concat([
-                self._get_process_series(sub_process, usage)
-                for sub_process in self.service_def.process.sub_processes
-            ], keys=[p.name for p in self.service_def.process.sub_processes], axis=1)
-
-            total = processes.apply(sum, axis=1)
-            cores = total * float(self.service_def.process.cores_per_sub_process)
-            ram = total * float(self.service_def.process.ram_per_sub_process)
-            vms_by_cores = cores / self.service_def.process.cores_per_node
-            vms_by_ram = ram / self.service_def.process.ram_per_node
-            vms = vms_by_cores if vms_by_cores[-1] > vms_by_ram[-1] else vms_by_ram
-            compute = pd.concat([cores, ram, vms.map(np.ceil)], keys=['CPU', 'RAM', 'VMs'], axis=1)
+            compute = self._calculate_sub_process_resources(usage)
         elif self.service_def.usage_capacity_per_node:
-            nodes = (usage / self.service_def.usage_capacity_per_node).map(np.ceil)
-            compute = pd.concat([
-                nodes * self.service_def.process.cores_per_node,
-                nodes * self.service_def.process.ram_per_node,
-                nodes
-            ], keys=['CPU', 'RAM', 'VMs'], axis=1)
+            compute = self._calculate_usage_capacity_per_node(usage)
         else:
             nodes = pd.Series([self.service_def.static_number] * len(usage), index=usage.index)
             compute = pd.concat([nodes, nodes, nodes], keys=['CPU', 'RAM', 'VMs'], axis=1)
 
         compute['VMs Usage'] = compute['VMs']
         if self.service_def.max_storage_per_node_bytes:
-            # Add extra VMs to keep storage per VM within range
-            max_supported = compute['VMs'] * self.service_def.max_storage_per_node_bytes
-            extra = data_storage['storage'] - max_supported
-            extra[extra < 0] = 0
-            extra_vms = np.ceil(extra / self.service_def.max_storage_per_node_bytes)
-            compute['VMs'] = compute['VMs'] + extra_vms
-            compute['Additional VMs (storage)'] = extra_vms
-
+            compute = self._calculate_max_storage_per_node_bytes(compute, data_storage)
         if self.service_def.process.ram_model:
-            # Add extra VMs if we need more RAM
-            ram_requirement = _service_data_size(
-                self.service_def.process.ram_model,
-                0,
-                current_data_frame,
-                self.service_def.process.ram_redundancy_factor,
-            )
-            ram_requirement = ram_requirement / byte_map['GB']
-            ram_per_node_excl_baseline = self.service_def.process.ram_per_node - self.service_def.process.ram_static_baseline
-            current_allocation = compute['VMs'] * ram_per_node_excl_baseline
-            difference = ram_requirement - current_allocation
+            compute = self._calculate_ram_model(current_data_frame, compute)
 
-            difference[difference < 0] = 0
-            extra_vms = np.ceil(difference / ram_per_node_excl_baseline)
-            compute['VMs'] = compute['VMs'] + extra_vms
-            compute['Additional VMs (RAM)'] = extra_vms
-            compute['RAM requirement'] = ram_requirement
+        return compute
 
+    def _calculate_sub_process_resources(self, usage):
+        processes = pd.concat([
+            self._get_process_series(sub_process, usage)
+            for sub_process in self.service_def.process.sub_processes
+        ], keys=[p.name for p in self.service_def.process.sub_processes], axis=1)
+
+        total = processes.apply(sum, axis=1)
+        cores = total * float(self.service_def.process.cores_per_sub_process)
+        ram = total * float(self.service_def.process.ram_per_sub_process)
+        vms_by_cores = cores / self.service_def.process.cores_per_node
+        vms_by_ram = ram / self.service_def.process.ram_per_node
+        vms = vms_by_cores if vms_by_cores[-1] > vms_by_ram[-1] else vms_by_ram
+        compute = pd.concat([cores, ram, vms.map(np.ceil)], keys=['CPU', 'RAM', 'VMs'], axis=1)
+        return compute
+
+    def _calculate_usage_capacity_per_node(self, usage):
+        nodes = (usage / self.service_def.usage_capacity_per_node).map(np.ceil)
+        compute = pd.concat([
+            nodes * self.service_def.process.cores_per_node,
+            nodes * self.service_def.process.ram_per_node,
+            nodes
+        ], keys=['CPU', 'RAM', 'VMs'], axis=1)
+        return compute
+
+    def _calculate_max_storage_per_node_bytes(self, compute, data_storage):
+        # Add extra VMs to keep storage per VM within range
+        max_supported = compute['VMs'] * self.service_def.max_storage_per_node_bytes
+        extra = data_storage['storage'] - max_supported
+        extra[extra < 0] = 0
+        extra_vms = np.ceil(extra / self.service_def.max_storage_per_node_bytes)
+        compute['VMs'] = compute['VMs'] + extra_vms
+        compute['Additional VMs (storage)'] = extra_vms
+
+        return compute
+
+    def _calculate_ram_model(self, current_data_frame, compute):
+        # Add extra VMs if we need more RAM
+        ram_requirement = _service_data_size(
+            self.service_def.process.ram_model,
+            0,
+            current_data_frame,
+            self.service_def.process.ram_redundancy_factor,
+        )
+        ram_requirement = ram_requirement / byte_map['GB']
+        ram_per_node_excl_baseline = self.service_def.process.ram_per_node - self.service_def.process.ram_static_baseline
+        current_allocation = compute['VMs'] * ram_per_node_excl_baseline
+        difference = ram_requirement - current_allocation
+
+        difference[difference < 0] = 0
+        extra_vms = np.ceil(difference / ram_per_node_excl_baseline)
+        compute['VMs'] = compute['VMs'] + extra_vms
+        compute['Additional VMs (RAM)'] = extra_vms
+        compute['RAM requirement'] = ram_requirement
         return compute

@@ -1,0 +1,39 @@
+estimation_buffer: 0.2
+storage_buffer: 0.25
+storage_display_unit: TB
+
+summary_dates:
+  - '2018-12'
+  - '2019-12'
+  - '2020-12'
+
+vm_os_storage_gb: 70
+vm_os_storage_group: 'VM'
+
+usage:
+  users:
+    model: 'date_range_value'
+    ranges:
+      - ['20170601', 1000000]
+      - ['20170701', 2000000]
+      - ['20170801', 3000000]
+  forms:
+    model: 'derived_factor'
+    start_with: 5000000
+    dependant_field: 'users'
+    factor: 1000000
+
+services:
+  couchdb_meta:
+    usage_capacity_per_node: 100000
+    min_nodes: 3
+    storage:
+      group: 'Primary'
+      redundancy_factor: 3
+      static_baseline: 20000000000  # 20GB to account for other databases
+      data_models:
+        - referenced_field: 'users'
+          unit_size: 600000   # disk size / doc count of icds @ 2017-12-13
+    process:
+      cores_per_node: 4
+      ram_per_node: 16
