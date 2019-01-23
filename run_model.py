@@ -62,23 +62,3 @@ if __name__ == '__main__':
             date = summary_dates[0]
             summary_data_snapshot = summaries[date]
             write_summary_data(config, writer, date, summary_data_snapshot, user_count[date])
-        else:
-            summary_comparisons = compare_summaries(config, summaries)
-            incrementals = incremental_summaries(summary_comparisons, summary_dates)
-            write_summary_comparisons(config, writer, user_count, summary_comparisons)
-            write_summary_comparisons(config, writer, user_count, incrementals, prefix='Incremental ')
-
-            for date in sorted(summaries):
-                write_summary_data(config, writer, date, summaries[date], user_count[date])
-
-        if is_excel:
-            # only write raw data if writing to Excel
-            write_raw_data(writer, usage, 'Usage')
-            write_raw_service_data(writer, service_data, summary_data, 'Raw Data')
-
-            with open(args.config, 'r') as f:
-                config_string = 'Git commit: {}\n\n{}'.format(
-                    get_git_revision_hash(),
-                    f.read()
-                )
-                writer.write_config_string(config_string)
