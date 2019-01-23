@@ -63,108 +63,109 @@ def summarize_service_data(config, summary_data, summary_date):
     return ServiceSummary(summary_by_service, storage_by_group)
 
 
-def get_summary_data(config, service_data):
+def get_summary_data(config, all_service_data):
     """Compute summary data for each month and each service"""
 
     # formula for compound growth: start_val * (1 + growth factor)^N
-    ebi = pd.Series(range(0, len(service_data.index)), index=service_data.index)
-    estimation_buffer = config.estimation_buffer * (1 + config.estimation_growth_factor) ** ebi
-    estimation_buffer = estimation_buffer.map(float)
+    for service_data in all_service_data:
+        ebi = pd.Series(range(0, len(service_data.index)), index=service_data.index)
+        estimation_buffer = config.estimation_buffer * (1 + config.estimation_growth_factor) ** ebi
+        estimation_buffer = estimation_buffer.map(float)
 
-    storage_units = config.storage_display_unit
-    to_display = to_storage_display_unit(storage_units)
-    to_gb = to_storage_display_unit('GB')
-    summary_df = dict()
-    for service_name, service_def in config.services.items():
-        service_snapshot = service_data[service_name]
-        compute = service_snapshot['Compute']
-        data_storage = service_snapshot['Data Storage']['storage']
-        node_buffer = 0 if service_def.static_number else (compute['VMs'] * estimation_buffer).map(np.ceil)
-        vms_suggested = (compute['VMs'] + node_buffer).map(np.ceil)
-        vms_total = pd.DataFrame([
-            vms_suggested,
-            pd.Series([service_def.min_nodes] * len(vms_suggested), index=vms_suggested.index)
-        ]).max()
+        storage_units = config.storage_display_unit
+        to_display = to_storage_display_unit(storage_units)
+        to_gb = to_storage_display_unit('GB')
+        summary_df = dict()
+        for service_name, service_def in config.services.items():
+            service_snapshot = service_data[service_name]
+            compute = service_snapshot['Compute']
+            data_storage = service_snapshot['Data Storage']['storage']
+            node_buffer = 0 if service_def.static_number else (compute['VMs'] * estimation_buffer).map(np.ceil)
+            vms_suggested = (compute['VMs'] + node_buffer).map(np.ceil)
+            vms_total = pd.DataFrame([
+                vms_suggested,
+                pd.Series([service_def.min_nodes] * len(vms_suggested), index=vms_suggested.index)
+            ]).max()
 
-        storage_estimation_buffer = estimation_buffer
-        if service_def.storage.override_estimation_buffer is not None:
-            storage_estimation_buffer = pd.Series(
-                [float(service_def.storage.override_estimation_buffer)] * len(service_data.index),
-                index=service_data.index
-            )
-        # this is True if 'service_def.min_nodes' is more than what is being suggested
-        vm_total_gt = vms_total > vms_suggested
-        data_storage_buffer = data_storage * storage_estimation_buffer
+            storage_estimation_buffer = estimation_buffer
+            if service_def.storage.override_estimation_buffer is not None:
+                storage_estimation_buffer = pd.Series(
+                    [float(service_def.storage.override_estimation_buffer)] * len(service_data.index),
+                    index=service_data.index
+                )
+            # this is True if 'service_def.min_nodes' is more than what is being suggested
+            vm_total_gt = vms_total > vms_suggested
+            data_storage_buffer = data_storage * storage_estimation_buffer
 
-        if service_def.storage_scales_with_nodes:
-            # in this case total storage = storage * VM number
-            data_storage_per_vm = data_storage + data_storage_buffer
-            data_storage_total = data_storage_per_vm * vms_total
-        elif True in set(vm_total_gt):
-            # in this case 'service_def.min_nodes' is more than what is being suggested
-            # so we want to add storage buffer and then distribute among all the nodes
-            # but only where vm_total_gt = False
+            if service_def.storage_scales_with_nodes:
+                # in this case total storage = storage * VM number
+                data_storage_per_vm = data_storage + data_storage_buffer
+                data_storage_total = data_storage_per_vm * vms_total
+            elif True in set(vm_total_gt):
+                # in this case 'service_def.min_nodes' is more than what is being suggested
+                # so we want to add storage buffer and then distribute among all the nodes
+                # but only where vm_total_gt = False
 
-            # 1. calculate storage per VM and total for case where ``vms_total <= vms_suggested``
-            vm_total_lte = np.invert(vm_total_gt)
-            data_storage_per_vm_lt = data_storage / compute['VMs'] * vm_total_lte
-            data_storage_total_lt = data_storage_per_vm_lt * vms_total * vm_total_lte
+                # 1. calculate storage per VM and total for case where ``vms_total <= vms_suggested``
+                vm_total_lte = np.invert(vm_total_gt)
+                data_storage_per_vm_lt = data_storage / compute['VMs'] * vm_total_lte
+                data_storage_total_lt = data_storage_per_vm_lt * vms_total * vm_total_lte
 
-            # 2. calculate storage per VM and total for case where ``vms_total > vms_suggested``
-            data_storage_total_gt = (data_storage + data_storage_buffer) * vm_total_gt
-            data_storage_per_vm_gt = data_storage_total_gt / vms_total * vm_total_gt
+                # 2. calculate storage per VM and total for case where ``vms_total > vms_suggested``
+                data_storage_total_gt = (data_storage + data_storage_buffer) * vm_total_gt
+                data_storage_per_vm_gt = data_storage_total_gt / vms_total * vm_total_gt
 
-            # combine 1 & 2 and select values according to vm_total_gt
-            data_storage_total = data_storage_total_lt + data_storage_total_gt
-            data_storage_per_vm = data_storage_per_vm_lt + data_storage_per_vm_gt
-        elif not compute['VMs'].any():
-            # if this service doesn't have any compute resources
-            storage_buffer = data_storage * storage_estimation_buffer
-            storage_estimation_buffer = data_storage * estimation_buffer
-            data_storage_total = data_storage + storage_buffer + storage_estimation_buffer
-        else:
-            # data is spread across all VMs
-            data_storage_per_vm = data_storage / compute['VMs']
-            data_storage_total = data_storage_per_vm * vms_total
+                # combine 1 & 2 and select values according to vm_total_gt
+                data_storage_total = data_storage_total_lt + data_storage_total_gt
+                data_storage_per_vm = data_storage_per_vm_lt + data_storage_per_vm_gt
+            elif not compute['VMs'].any():
+                # if this service doesn't have any compute resources
+                storage_buffer = data_storage * storage_estimation_buffer
+                storage_estimation_buffer = data_storage * estimation_buffer
+                data_storage_total = data_storage + storage_buffer + storage_estimation_buffer
+            else:
+                # data is spread across all VMs
+                data_storage_per_vm = data_storage / compute['VMs']
+                data_storage_total = data_storage_per_vm * vms_total
 
-        zero = pd.Series([0] * len(vms_suggested), index=vms_suggested.index)
-        include_ha_resources = service_def.include_ha_resources
-        data_storage_ha = data_storage_total if include_ha_resources else zero.copy()
-        data_storage_total = data_storage_total + data_storage_ha
+            zero = pd.Series([0] * len(vms_suggested), index=vms_suggested.index)
+            include_ha_resources = service_def.include_ha_resources
+            data_storage_ha = data_storage_total if include_ha_resources else zero.copy()
+            data_storage_total = data_storage_total + data_storage_ha
 
-        cores = vms_total * service_def.process.cores_per_node if vms_total.any() else zero.copy()
-        cores_ha = cores if include_ha_resources else zero.copy()
-        cores_total = cores + cores_ha
+            cores = vms_total * service_def.process.cores_per_node if vms_total.any() else zero.copy()
+            cores_ha = cores if include_ha_resources else zero.copy()
+            cores_total = cores + cores_ha
 
-        ram = vms_total * service_def.process.ram_per_node if vms_total.any() else zero.copy()
-        ram_ha = ram if include_ha_resources else zero.copy()
-        ram_total = ram + ram_ha
+            ram = vms_total * service_def.process.ram_per_node if vms_total.any() else zero.copy()
+            ram_ha = ram if include_ha_resources else zero.copy()
+            ram_total = ram + ram_ha
 
-        vms_ha = vms_total.copy() if include_ha_resources else zero.copy()
-        vms_total = vms_total + vms_ha
+            vms_ha = vms_total.copy() if include_ha_resources else zero.copy()
+            vms_total = vms_total + vms_ha
 
-        os_storage = vms_total * config.vm_os_storage_gb * (1000.0 ** 3)
-        os_storage_ha = vms_ha * config.vm_os_storage_gb * (1000.0 ** 3)
-        data = OrderedDict([
-            ('Cores Per VM', service_def.process.cores_per_node),
-            ('Cores HA', cores_ha),
-            ('Cores Total', cores_total),
-            ('RAM Per VM', service_def.process.ram_per_node),
-            ('RAM HA (GB)', ram_ha),
-            ('RAM Total (GB)', ram_total),
-            ('Data Storage Per VM (GB)', tenth_round(to_gb((data_storage_per_vm) if compute['VMs'].any() else zero.copy()))),
-            ('Data Storage HA (%s)' % storage_units, tenth_round(to_display((data_storage_ha).map(np.ceil)))),
-            ('Data Storage Total (%s)' % storage_units, tenth_round(to_display((data_storage_total).map(np.ceil)))),
-            ('Data Storage RAW (includes HA) (%s)' % storage_units, to_display(data_storage + data_storage_ha)),
-            ('VMs HA', vms_ha),
-            ('VMs Total', vms_total),
-            ('VM Buffer', node_buffer),
-            ('Buffer %', estimation_buffer),
-            ('OS Storage HA (GB)', (to_gb(os_storage_ha)).map(np.ceil)),
-            ('OS Storage Total (Bytes)', os_storage),
-            ('OS Storage Total (GB)', (to_gb(os_storage)).map(np.ceil)),
-            ('Storage Group', service_def.storage.group),
-        ])
+            os_storage = vms_total * config.vm_os_storage_gb * (1000.0 ** 3)
+            os_storage_ha = vms_ha * config.vm_os_storage_gb * (1000.0 ** 3)
+            data = OrderedDict([
+                ('Cores Per VM', service_def.process.cores_per_node),
+                ('Cores HA', cores_ha),
+                ('Cores Total', cores_total),
+                ('RAM Per VM', service_def.process.ram_per_node),
+                ('RAM HA (GB)', ram_ha),
+                ('RAM Total (GB)', ram_total),
+                ('Data Storage Per VM (GB)', tenth_round(to_gb((data_storage_per_vm) if compute['VMs'].any() else zero.copy()))),
+                ('Data Storage HA (%s)' % storage_units, tenth_round(to_display((data_storage_ha).map(np.ceil)))),
+                ('Data Storage Total (%s)' % storage_units, tenth_round(to_display((data_storage_total).map(np.ceil)))),
+                ('Data Storage RAW (includes HA) (%s)' % storage_units, to_display(data_storage + data_storage_ha)),
+                ('VMs HA', vms_ha),
+                ('VMs Total', vms_total),
+                ('VM Buffer', node_buffer),
+                ('Buffer %', estimation_buffer),
+                ('OS Storage HA (GB)', (to_gb(os_storage_ha)).map(np.ceil)),
+                ('OS Storage Total (Bytes)', os_storage),
+                ('OS Storage Total (GB)', (to_gb(os_storage)).map(np.ceil)),
+                ('Storage Group', service_def.storage.group),
+            ])
         combined = pd.DataFrame(data=data)
         summary_df[service_name] = combined
 
