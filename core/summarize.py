@@ -67,6 +67,7 @@ def get_summary_data(config, all_service_data):
     """Compute summary data for each month and each service"""
 
     # formula for compound growth: start_val * (1 + growth factor)^N
+    summary_df_list = []
     for service_data in all_service_data:
         ebi = pd.Series(range(0, len(service_data.index)), index=service_data.index)
         estimation_buffer = config.estimation_buffer * (1 + config.estimation_growth_factor) ** ebi
@@ -166,10 +167,11 @@ def get_summary_data(config, all_service_data):
                 ('OS Storage Total (GB)', (to_gb(os_storage)).map(np.ceil)),
                 ('Storage Group', service_def.storage.group),
             ])
-        combined = pd.DataFrame(data=data)
-        summary_df[service_name] = combined
+            combined = pd.DataFrame(data=data)
+            summary_df[service_name] = combined
+            summary_df_list.append(pd.Panel(summary_df))
 
-    return pd.Panel(summary_df)  # toto: use multiindex dataframe
+    return summary_df_list# toto: use multiindex dataframe
 
 
 def compare_summaries(config, summaries_by_date):

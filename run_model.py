@@ -101,12 +101,13 @@ if __name__ == '__main__':
         summaries = {}
         user_count = {}
         date_list = list(usage.index.to_series())
-        summary_data = get_summary_data(server_config, all_service_data)
-        for date in summary_dates:
-            summaries[date] = summarize_service_data(server_config, summary_data, date)
-            user_count[date] = usage.loc[date]['users']
+        summary_data_list = get_summary_data(server_config, all_service_data)
+        for summary_data in summary_data_list:
+            for date in summary_dates:
+                summaries[date] = summarize_service_data(server_config, summary_data, date)
+                user_count[date] = usage.loc[date]['users']
 
-        if len(summary_dates) == 1:
-            date = summary_dates[0]
-            summary_data_snapshot = summaries[date]
-            write_summary_data(server_config, writer, date, summary_data_snapshot, user_count[date])
+            if len(summary_dates) == 1:
+                date = summary_dates[0]
+                summary_data_snapshot = summaries[date]
+                write_summary_data(server_config, writer, date, summary_data_snapshot, user_count[date])
