@@ -2,7 +2,10 @@ import argparse
 import subprocess
 from collections import namedtuple
 
+import copy
+import json
 import pandas as pd
+import tempfile
 
 from core.config import cluster_config_from_path, dict_config_from_path
 from core.generate import generate_usage_data, generate_service_data
@@ -19,10 +22,42 @@ def get_git_revision_hash():
     return subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode('utf8')
 
 def generate_server_configs(server_config, analysis_config):
+    configs_to_analyze = []
     for analysis_field in analysis_config:
         for usage_field in server_config["usage"]:
             if usage_field == analysis_field:
-                dummy = 5
+                model_params = generate_model_params(server_config["usage"][usage_field], analysis_config[analysis_field])
+                # Generate a different cluster config for each entry in model_params
+                for model_param in model_params:
+                    analysis_model_dict = copy.deepcopy(server_config)
+                    analysis_model_dict["usage"][usage_field] = model_param
+                    # Write the config to a temp file so it can be make into a ClusterConfig object
+                    with open(tempfile.NamedTemporaryFile().name, 'a+') as f:
+                        f.write(json.dumps(analysis_model_dict))
+                        f.seek(0)
+                        analysis_model_config = cluster_config_from_path(f.name)
+                    configs_to_analyze.append(analysis_model_config)
+
+    return configs_to_analyze
+
+
+def generate_model_params(model_params, analysis_config_entry):
+    factor_values = generate_steps(analysis_config_entry)
+    analysis_model_params = []
+    field_to_modify = analysis_config_entry["field_name"]
+    for factor_value in factor_values:
+        this_model_def = copy.deepcopy(model_params)
+        this_model_def[field_to_modify] = factor_value * model_params[field_to_modify]
+        analysis_model_params.append(this_model_def)
+    return analysis_model_params
+
+def generate_steps(analysis_config_entry):
+    val_to_add = analysis_config_entry["factor_start"]
+    step_values = []
+    while val_to_add <= analysis_config_entry["factor_end"]:
+        step_values.append(val_to_add)
+        val_to_add += analysis_config_entry["factor_step"]
+    return step_values
 
 if __name__ == '__main__':
 
