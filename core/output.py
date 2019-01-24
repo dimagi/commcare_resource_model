@@ -4,6 +4,7 @@ import numpy as np
 
 COMPARISONS_SHEET = 'Comparisons'
 SUMMARY_SHEET = '%s - %s users'
+SUMMARY_SHEET_ANALYSIS = '%s (%s) - %s'
 
 STORAGE_GROUP_INDEX = 'Storage Group'
 STORAGE_CAT_INDEX = 'Service'
@@ -36,8 +37,9 @@ def write_summary_comparisons(config, writer, user_counts, comparisons, prefix='
     writer.write_data_frame(compute, sheet, SERVICE_INDEX, '%sCompute Combined' % prefix, has_total_row=True)
 
 
-def write_summary_data(config, writer, summary_date, summary_data, user_count):
-    sheet_name = SUMMARY_SHEET % (format_date(summary_date), short_user_count(user_count))
+def write_summary_data(config, writer, summary_date, summary_data, user_count, field_to_modify, subfield_to_modify, step_value):
+    # sheet_name = SUMMARY_SHEET % (format_date(summary_date), short_user_count(user_count))
+    sheet_name = SUMMARY_SHEET_ANALYSIS  % (field_to_modify, subfield_to_modify, step_value)
     writer.write_user_counts_vertical(sheet_name, [(format_date(summary_date), user_count)])
 
     storage_group_header = 'Storage by Group (%s)' % config.storage_display_unit
