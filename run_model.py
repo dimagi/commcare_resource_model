@@ -76,6 +76,30 @@ if __name__ == '__main__':
         analysis_config = dict_config_from_path(args.analysis_config)
         all_server_configs = generate_server_configs(base_server_config, analysis_config)
 
+        for server_config in all_server_configs:
+            usage = generate_usage_data(server_config)
+            service_data = generate_service_data(server_config, usage)
+            summary_data = get_summary_data(server_config, service_data)
+
+            if server_config.summary_dates:
+                summary_dates = server_config.summary_date_vals
+            else:
+                summary_dates = [usage.iloc[-1].name]  # summarize at final date
+
+
+            date_list = list(usage.index.to_series())
+            summary_data = get_summary_data(server_config, service_data)
+
+            summary = summarize_service_data(server_config, summary_data, summary_dates[0])
+            user_count = usage.loc[summary_dates[0]]['users']
+
+
+            ram = summary[0].iloc[0]['RAM Total (GB)']
+            cpu = summary[0].iloc[0]['Cores Total']
+            sas_storage = summary[1].iloc[0]['Rounded Total (TB)']
+            ssd_storage = summary[1].iloc[1]['Rounded Total (TB)']
+            total_vms = summary[0].iloc[0]['VMs Total']
+
     else:
         server_config = cluster_config_from_path(args.server_config)
         usage = generate_usage_data(server_config)
