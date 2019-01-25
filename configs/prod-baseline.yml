@@ -4,7 +4,7 @@ storage_buffer: 0.33  # keep max storage at 75% of disk
 storage_display_unit: TB
 
 summary_dates:
-  - '2019-12'
+  - '2019-01'
 
 vm_os_storage_gb: 50
 vm_os_storage_group: 'VM_os'
@@ -13,18 +13,13 @@ usage:
   users:
     model: 'date_range_value'
     ranges:
-      - ['20190101', '20191201', 30000]
+      - ['20190101', '20190101', 20000]
 
-  # LS User as a percent of total User
-  ls_users:
-    model: 'derived_factor'
-    dependant_field: 'users'
-    factor: 0.05
   # Number of formplayer user from X date to Y
   formplayer_users:
     model: 'date_range_value'
     ranges:
-      - ['20190901', '20191201', 1000]
+      - ['20190101', '20190101', 1000]
 
   #Number of forms per user per month
   forms_monthly:
@@ -83,7 +78,6 @@ usage:
     dependant_fields:
       - 'beneficiary_phone_numbers'
       - 'users'  # 100% seeding
-      - 'ls_users'  # 100% seeding
 
   pregancy_cases:
     model: 'baseline_with_growth'
@@ -152,73 +146,6 @@ usage:
     dependant_field: 'users'
     factor: 50  # inflated to be safe
 
-  # See https://docs.google.com/spreadsheets/d/1vzp5kLHBm6IXKI39LTDS2pN69uMryXuBkpl7c8sxik8/edit#gid=1536669590 for sms estimates
-  # (old https://docs.google.com/spreadsheets/d/16evR_N95TUBFlIr3D3ojasX7yN4odDOxH5mgcF6VCkQ/edit#gid=0)
-### PHASE 1 SMS
-#  sms_beneficiary:
-#    model: 'derived_factor'
-#    dependant_field: 'phone_numbers'
-#    factor: 0.02
-#  sms_aww:
-#    model: 'derived_factor'
-#    dependant_field: 'users'
-#    factor: 1  # 2 per month (divide by 2 assuming 50% phone capture rate)
-#  sms_ls:
-#    model: 'derived_factor'
-#    dependant_field: 'ls_users'
-#    factor: 1.6  # 3 per month per user as well as 1 more every 6 months (divide by 2 assuming 50% phone capture rate)
-#  sms_monthly_total:
-#    model: 'derived_sum'
-#    start_with: 0
-#    dependant_fields:
-#      - 'sms_beneficiary'
-#      - 'sms_aww'
-#      - 'sms_ls'
-### PHASE 2 SMS (assuming 100% phone number capture rate)
-  sms_adolescent_girls:
-    model: 'derived_factor'
-    dependant_field: 'users'
-    factor: 60  # 20 adolescent girls per aws x 3 messages per month
-  sms_pregnancies:
-    model: 'derived_factor'
-    dependant_field: 'users'
-    factor: 20  # 4 pregnancies per awc X 5 messages per month
-  sms_lactating_women:
-    model: 'derived_factor'
-    dependant_field: 'users'
-    factor: 35  # 7 lactating women per awc X 5 messages per month
-  sms_aww:
-    model: 'derived_factor'
-    dependant_field: 'users'
-    factor: 7  # 7 per month per user
-  sms_ls:
-    model: 'derived_factor'
-    dependant_field: 'ls_users'
-    factor: 5  # 5 per month per user
-  sms_monthly_total:
-    model: 'derived_sum'
-    start_with: 3438200
-    dependant_fields:
-      - 'sms_adolescent_girls'
-      - 'sms_pregnancies'
-      - 'sms_lactating_women'
-      - 'sms_aww'
-      - 'sms_ls'
-  sms_total:
-    model: 'cumulative_limited_lifespan'
-    dependant_field: 'sms_monthly_total'
-    lifespan: 3
-  sms_models_total:
-    model: 'derived_factor'
-    dependant_field: 'sms_total'
-    factor: 10  # sms (1) + smsbillables (1) + messagingevent (4) + messagingsubevent (4)
-
-  # casetimedscheduleinstance table in shard database
-  sms_schedule_instances_total:
-    model: 'derived_factor'
-    dependant_field: 'person_cases_total'
-    factor: 1  # rough guess
-
   kafka_changes:
     model: 'derived_sum'
     dependant_fields:
@@ -227,7 +154,6 @@ usage:
       - 'case_transactions'
       - 'ledger_updates_monthly'
       - 'synclogs'
-      - 'sms_monthly_total'
   kafka_changes_total:
     model: 'cumulative_limited_lifespan'
     dependant_field: 'kafka_changes'
@@ -237,8 +163,7 @@ services:
   pg_shards:
     # this should have standbys for HA
     # need higher performing SSDs
-    usage_capacity_per_node: 25000
-    include_ha_resources: True
+    usage_capacity_per_node: 8000
     storage:
       group: 'SSD'
       data_models:
@@ -256,23 +181,21 @@ services:
           unit_size: 420
         - referenced_field: 'images_total'
           unit_size: 370
-        - referenced_field: 'sms_schedule_instances_total'
-          unit_size: 683
     process:
-      cores_per_node: 32
-      ram_per_node: 128
+      cores_per_node: 2
+      ram_per_node: 8
 
   pg_proxy:
-    usage_capacity_per_node: 150000
-    storage_scales_with_nodes: True
+    # Why is this reporting it needs 2 nodes??
+    usage_capacity_per_node: 100000
     storage:
       group: 'VM_other'
       static_baseline: 200GB
       override_storage_buffer: 0
       override_estimation_buffer: 0
     process:
-      cores_per_node: 16
-      ram_per_node: 64
+      cores_per_node: 2
+      ram_per_node: 8
 
   pg_main:
     usage_capacity_per_node: 150000
@@ -288,8 +211,6 @@ services:
           unit_size: 1600
         - referenced_field: 'async_indicators'
           unit_size: 6626
-        - referenced_field: 'sms_models_total'
-          unit_size: 510  # averaged over all models taking model ratios into account
     process:
       cores_per_node: 32
       ram_per_node: 128
@@ -336,8 +257,6 @@ services:
           unit_size: 250
         - referenced_field: 'ledgers_total'
           unit_size: 500
-        - referenced_field: 'sms_total'
-          unit_size: 675
     process:
       cores_per_node: 16
       ram_per_node: 64
@@ -366,42 +285,6 @@ services:
       cores_per_node: 16
       ram_per_node: 32
 
-#  riakcs:
-#    usage_capacity_per_node: 50000
-#    # avg attachment size of 12560 bytes (11000*0.96 + 50000*0.04)
-#    # RAM requirement per key = 130b
-#    # num keys = 10TB / (12560b x 3<redundancy factor>)
-#    # RAM needed = 130b x num keys = 35GB (64GB avail per node)
-#    max_storage_per_node: 25TB
-#    min_nodes: 10
-#    storage:
-#      group: 'SSD'
-#      redundancy_factor: 3
-#      static_baseline: 10TB  # to account for exports etc
-#      data_models:
-#        - referenced_field: 'forms_total'  # 96% of objects
-#          unit_size: 11000
-#        - referenced_field: 'images_total'  # 4% of objects
-#          unit_size: 50000
-#    process:
-#      # current load quite low (~15%) (2018-10-11)
-#      cores_per_node: 32
-#      # need to be able to fit all keys in RAM since we're using bitcask backend
-#      # Current usage is at 30% (2018-10-11)
-#      ram_per_node: 128
-#      ram_model:
-#      - referenced_field: 'forms_total'
-#        # key size (45 + 6 + 79) (overhead + bucket + key)
-#        # bucket = 'blobdb'
-#        # new keys are smaller but stick with old key length for safety:
-#        #   new: form/xxxxxxxxxxxxxxuuidxxxxxxxxxxxxxx/Xpi-XM9CZvQ
-#        #   old: form/xxxxxxxxxxxxxxuuidxxxxxxxxxxxxxx/form.xml.xxxxxxxxxxxxxxuuidxxxxxxxxxxxxxx
-#        unit_size: 130
-#      - referenced_field: 'images_total'
-#        unit_size: 130
-#      ram_redundancy_factor: 3
-#      ram_static_baseline: 1  # per node
-
   pg_ucr:
     usage_capacity_per_node: 100000
     storage_scales_with_nodes: True
@@ -419,72 +302,26 @@ services:
       cores_per_node: 32
       ram_per_node: 256
 
-#  pg_ucr_citus:
-#    # This should have standby nodes
-#    usage_capacity_per_node: 50000
-#    include_ha_resources: True
-#    storage:
-#      # This is a rough estimate.
-#      # The person case UCR is 35% of total UCR usage.
-#      group: 'SSD'
-#      # this was in the wrong place so got left out by mistake
-#      data_models:
-#        - referenced_field: 'person_cases_total'
-#          unit_size: 9000  # inflated to account for others UCRs
-#        - referenced_field: 'cases_total'  # cumulative
-#          unit_size: 8000  # to account for monthly data etc.
-#    process:
-#      cores_per_node: 32
-#      ram_per_node: 256
-#
-#  pg_warehouse:
-#    usage_capacity_per_node: 300000
-#    storage_scales_with_nodes: True
-#    storage:
-#      group: 'SSD'
-#      data_models:
-#        - referenced_field: 'forms_total'
-#          unit_size: 4000  # to account for monthly data etc.
-#    process:
-#      cores_per_node: 16
-#      ram_per_node: 128
-#
-#  pg_warehouse_citus:
-#    # this should have replica nodes
-#    usage_capacity_per_node: 150000
-#    include_ha_resources: True
-#    storage:
-#      group: 'SSD'
-#      # this got left out by mistakes
-#      data_models:
-#        - referenced_field: 'forms_total'
-#          unit_size: 4000  # to account for monthly data etc.
-#        - referenced_field: 'cases_total'  # add cases in case we add them later
-#          unit_size: 4000
-#    process:
-#      cores_per_node: 32
-#      ram_per_node: 256
-
-  pillowtop:  # will need to revamp this once combined pillows are rolled out
+  pillowtop:
     storage_scales_with_nodes: True
     process:
       cores_per_node: 16
-      ram_per_node: 48
+      ram_per_node: 128
       cores_per_sub_process: 0.5
-      ram_per_sub_process: 0.7
+      ram_per_sub_process: 0.2
       sub_processes:
         - name: 'other'
-          capacity: 7000  # covers all other pillows
+          capacity: 25000  # covers all other pillows
         - name: 'FormSubmissionMetadataTrackerPillow'
-          capacity: 7000
+          capacity: 25000
         - name: 'XFormToElasticsearchPillow'
-          capacity: 7000
+          capacity: 25000
         - name: 'kafka-ucr-static-forms'
-          capacity: 2500
+          capacity: 25000
         - name: 'kafka-ucr-static-cases'
-          capacity: 1000
+          capacity: 25000
         - name: 'CaseToElasticsearchPillow'
-          capacity: 1000
+          capacity: 25000
     storage:
       group: 'VM_other'
       static_baseline: 100GB
@@ -602,18 +439,6 @@ services:
       data_models:
         - referenced_field: 'formplayer_users'
           unit_size: 200MB
-
-  airflow:
-    static_number: 4
-    storage_scales_with_nodes: True
-    process:
-      cores_per_node: 8
-      ram_per_node: 32
-    storage:
-      group: 'VM_other'
-      static_baseline: 100GB
-      override_storage_buffer: 0
-      override_estimation_buffer: 0
 
   control:
     static_number: 1
