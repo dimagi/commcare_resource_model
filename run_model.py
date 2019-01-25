@@ -80,11 +80,15 @@ if __name__ == '__main__':
 
     pd.options.display.float_format = '{:.1f}'.format
 
-    base_server_config = dict_config_from_path(args.server_config)
     if args.analysis_config:
         analysis_config = dict_config_from_path(args.analysis_config)
+
+        # Get the server config as a dict
+        base_server_config = dict_config_from_path(args.server_config)
+        # Make a list of ClusterConfig objects with all the different modifications specified in the analysis_config file 
         all_server_config_data = generate_server_configs(base_server_config, analysis_config)
 
+        # Create the dictionary, which will eventually be written to excel
         output_data = {'Field to Modify': [],
                        'Subfield to Modify': [],
                        'Step Value': [],
@@ -94,6 +98,7 @@ if __name__ == '__main__':
                        'SSD Storage (TB)': [],
                        'Total VMs': [],}
 
+        # Generate server and usage data for each ClusterConfig object
         for server_config_data in all_server_config_data:
             server_config = server_config_data['model']
             usage = generate_usage_data(server_config)
@@ -112,6 +117,7 @@ if __name__ == '__main__':
             summary = summarize_service_data(server_config, summary_data, summary_dates[0])
             user_count = usage.loc[summary_dates[0]]['users']
 
+            # Append the dictionary entries with the calculated value for each ClusterConfig object
             output_data['Field to Modify'].append(server_config_data['field_to_modify'])
             output_data['Subfield to Modify'].append(server_config_data['subfield_to_modify'])
             output_data['Step Value'].append(server_config_data['step_value'])
@@ -122,7 +128,7 @@ if __name__ == '__main__':
             output_data['SSD Storage (TB)'].append(summary[1].iloc[1]['Rounded Total (TB)'])
             output_data['Total VMs'].append(summary[0].iloc[0]['VMs Total'])
 
-        # Get baseline info so you can compare all the outputs to it
+        # Add dictionary entries which compare the values to the baseline value and display percentages
         baseline_step_value_index = [index for index, value in enumerate(output_data["Step Value"]) if value==1][0]
 
         # Compare outputs in output_data to the baseline values
@@ -133,6 +139,7 @@ if __name__ == '__main__':
         output_data['Total VMs (% change from baseline)'] = compare_to_baseline_values('Total VMs', output_data, baseline_step_value_index)
         output_data['Step Value (% change from baseline)'] = ['{}%'.format(val * 100) for val in output_data['Step Value']]
 
+        # Convert the dictionary to a DataFrame and write to an excel spreadsheet
         output_dataframe = pd.DataFrame(data=output_data, index=output_data['Field to Modify'])
         writer = ExcelWriter(args.output)
         with writer:
