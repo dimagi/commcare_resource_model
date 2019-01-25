@@ -13,14 +13,14 @@ usage:
   users:
     model: 'date_range_value'
     ranges:
-      - ['20190101', '20191201', 40000]
+      - ['20190101', '20191201', 30000]
 
   # LS User as a percent of total User
   ls_users:
     model: 'derived_factor'
     dependant_field: 'users'
     factor: 0.05
-  # Number of formaplayer user from X date to Y
+  # Number of formplayer user from X date to Y
   formplayer_users:
     model: 'date_range_value'
     ranges:
@@ -39,7 +39,7 @@ usage:
   forms_total:
     model: 'cumulative'
     dependant_field: 'forms_monthly'
-    start_with: 329680028   # from ES form index (total docs) Roma
+    start_with: 0
 
   #Number of cases per user per month
   cases_total:
@@ -366,41 +366,41 @@ services:
       cores_per_node: 16
       ram_per_node: 32
 
-  riakcs:
-    usage_capacity_per_node: 50000
-    # avg attachment size of 12560 bytes (11000*0.96 + 50000*0.04)
-    # RAM requirement per key = 130b
-    # num keys = 10TB / (12560b x 3<redundancy factor>)
-    # RAM needed = 130b x num keys = 35GB (64GB avail per node)
-    max_storage_per_node: 25TB
-    min_nodes: 10
-    storage:
-      group: 'SSD'
-      redundancy_factor: 3
-      static_baseline: 10TB  # to account for exports etc
-      data_models:
-        - referenced_field: 'forms_total'  # 96% of objects
-          unit_size: 11000
-        - referenced_field: 'images_total'  # 4% of objects
-          unit_size: 50000
-    process:
-      # current load quite low (~15%) (2018-10-11)
-      cores_per_node: 32
-      # need to be able to fit all keys in RAM since we're using bitcask backend
-      # Current usage is at 30% (2018-10-11)
-      ram_per_node: 128
-      ram_model:
-      - referenced_field: 'forms_total'
-        # key size (45 + 6 + 79) (overhead + bucket + key)
-        # bucket = 'blobdb'
-        # new keys are smaller but stick with old key length for safety:
-        #   new: form/xxxxxxxxxxxxxxuuidxxxxxxxxxxxxxx/Xpi-XM9CZvQ
-        #   old: form/xxxxxxxxxxxxxxuuidxxxxxxxxxxxxxx/form.xml.xxxxxxxxxxxxxxuuidxxxxxxxxxxxxxx
-        unit_size: 130
-      - referenced_field: 'images_total'
-        unit_size: 130
-      ram_redundancy_factor: 3
-      ram_static_baseline: 1  # per node
+#  riakcs:
+#    usage_capacity_per_node: 50000
+#    # avg attachment size of 12560 bytes (11000*0.96 + 50000*0.04)
+#    # RAM requirement per key = 130b
+#    # num keys = 10TB / (12560b x 3<redundancy factor>)
+#    # RAM needed = 130b x num keys = 35GB (64GB avail per node)
+#    max_storage_per_node: 25TB
+#    min_nodes: 10
+#    storage:
+#      group: 'SSD'
+#      redundancy_factor: 3
+#      static_baseline: 10TB  # to account for exports etc
+#      data_models:
+#        - referenced_field: 'forms_total'  # 96% of objects
+#          unit_size: 11000
+#        - referenced_field: 'images_total'  # 4% of objects
+#          unit_size: 50000
+#    process:
+#      # current load quite low (~15%) (2018-10-11)
+#      cores_per_node: 32
+#      # need to be able to fit all keys in RAM since we're using bitcask backend
+#      # Current usage is at 30% (2018-10-11)
+#      ram_per_node: 128
+#      ram_model:
+#      - referenced_field: 'forms_total'
+#        # key size (45 + 6 + 79) (overhead + bucket + key)
+#        # bucket = 'blobdb'
+#        # new keys are smaller but stick with old key length for safety:
+#        #   new: form/xxxxxxxxxxxxxxuuidxxxxxxxxxxxxxx/Xpi-XM9CZvQ
+#        #   old: form/xxxxxxxxxxxxxxuuidxxxxxxxxxxxxxx/form.xml.xxxxxxxxxxxxxxuuidxxxxxxxxxxxxxx
+#        unit_size: 130
+#      - referenced_field: 'images_total'
+#        unit_size: 130
+#      ram_redundancy_factor: 3
+#      ram_static_baseline: 1  # per node
 
   pg_ucr:
     usage_capacity_per_node: 100000
@@ -419,51 +419,51 @@ services:
       cores_per_node: 32
       ram_per_node: 256
 
-  pg_ucr_citus:
-    # This should have standby nodes
-    usage_capacity_per_node: 50000
-    include_ha_resources: True
-    storage:
-      # This is a rough estimate.
-      # The person case UCR is 35% of total UCR usage.
-      group: 'SSD'
-      # this was in the wrong place so got left out by mistake
-      data_models:
-        - referenced_field: 'person_cases_total'
-          unit_size: 9000  # inflated to account for others UCRs
-        - referenced_field: 'cases_total'  # cumulative
-          unit_size: 8000  # to account for monthly data etc.
-    process:
-      cores_per_node: 32
-      ram_per_node: 256
-
-  pg_warehouse:
-    usage_capacity_per_node: 300000
-    storage_scales_with_nodes: True
-    storage:
-      group: 'SSD'
-      data_models:
-        - referenced_field: 'forms_total'
-          unit_size: 4000  # to account for monthly data etc.
-    process:
-      cores_per_node: 16
-      ram_per_node: 128
-
-  pg_warehouse_citus:
-    # this should have replica nodes
-    usage_capacity_per_node: 150000
-    include_ha_resources: True
-    storage:
-      group: 'SSD'
-      # this got left out by mistakes
-      data_models:
-        - referenced_field: 'forms_total'
-          unit_size: 4000  # to account for monthly data etc.
-        - referenced_field: 'cases_total'  # add cases in case we add them later
-          unit_size: 4000
-    process:
-      cores_per_node: 32
-      ram_per_node: 256
+#  pg_ucr_citus:
+#    # This should have standby nodes
+#    usage_capacity_per_node: 50000
+#    include_ha_resources: True
+#    storage:
+#      # This is a rough estimate.
+#      # The person case UCR is 35% of total UCR usage.
+#      group: 'SSD'
+#      # this was in the wrong place so got left out by mistake
+#      data_models:
+#        - referenced_field: 'person_cases_total'
+#          unit_size: 9000  # inflated to account for others UCRs
+#        - referenced_field: 'cases_total'  # cumulative
+#          unit_size: 8000  # to account for monthly data etc.
+#    process:
+#      cores_per_node: 32
+#      ram_per_node: 256
+#
+#  pg_warehouse:
+#    usage_capacity_per_node: 300000
+#    storage_scales_with_nodes: True
+#    storage:
+#      group: 'SSD'
+#      data_models:
+#        - referenced_field: 'forms_total'
+#          unit_size: 4000  # to account for monthly data etc.
+#    process:
+#      cores_per_node: 16
+#      ram_per_node: 128
+#
+#  pg_warehouse_citus:
+#    # this should have replica nodes
+#    usage_capacity_per_node: 150000
+#    include_ha_resources: True
+#    storage:
+#      group: 'SSD'
+#      # this got left out by mistakes
+#      data_models:
+#        - referenced_field: 'forms_total'
+#          unit_size: 4000  # to account for monthly data etc.
+#        - referenced_field: 'cases_total'  # add cases in case we add them later
+#          unit_size: 4000
+#    process:
+#      cores_per_node: 32
+#      ram_per_node: 256
 
   pillowtop:  # will need to revamp this once combined pillows are rolled out
     storage_scales_with_nodes: True
