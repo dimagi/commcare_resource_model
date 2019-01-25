@@ -138,7 +138,8 @@ if __name__ == '__main__':
         with writer:
             writer.write_data_frame(
                 data_frame=output_dataframe,
-                sheet_name='string1',
+                sheet_name='Server Sizing Analysis',
+                header='Server config: {}, Analysis Config: {}'.format(args.server_config, args.analysis_config),
                 index_label='Field getting modified'
             )
 
