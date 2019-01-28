@@ -18,12 +18,12 @@ SummaryData = namedtuple('SummaryData', 'storage compute')
 def get_git_revision_hash():
     return subprocess.check_output(['git', 'rev-parse', 'HEAD']).strip().decode('utf8')
 
-def generate_server_configs(server_config, analysis_config):
+def _generate_server_configs(server_config, analysis_config):
     configs_to_analyze = []
     for analysis_field in analysis_config:
         for usage_field in server_config["usage"]:
             if usage_field == analysis_field:
-                model_params = generate_model_params(server_config["usage"][usage_field], analysis_config[analysis_field], usage_field)
+                model_params = _generate_model_params(server_config["usage"][usage_field], analysis_config[analysis_field], usage_field)
                 # Generate a different cluster config for each entry in model_params
                 for model_param in model_params:
                     analysis_model_dict = copy.deepcopy(server_config)
@@ -41,8 +41,8 @@ def generate_server_configs(server_config, analysis_config):
     return configs_to_analyze
 
 
-def generate_model_params(model_params, analysis_config_entry, field_to_modify):
-    step_values = generate_steps(analysis_config_entry)
+def _generate_model_params(model_params, analysis_config_entry, field_to_modify):
+    step_values = _generate_steps(analysis_config_entry)
     analysis_model_params = []
     subfield_to_modify = analysis_config_entry["field_name"]
     for step_value in step_values:
@@ -54,7 +54,7 @@ def generate_model_params(model_params, analysis_config_entry, field_to_modify):
                                       "step_value": step_value})
     return analysis_model_params
 
-def generate_steps(analysis_config_entry):
+def _generate_steps(analysis_config_entry):
     val_to_add = analysis_config_entry["factor_start"]
     step_values = []
     while val_to_add <= analysis_config_entry["factor_end"]:
@@ -62,7 +62,7 @@ def generate_steps(analysis_config_entry):
         val_to_add += analysis_config_entry["factor_step"]
     return step_values
 
-def compare_to_baseline_values(field_to_update, output_data, baseline_step_value_index):
+def _compare_to_baseline_values(field_to_update, output_data, baseline_step_value_index):
     return ['{}%'.format(value/(output_data[field_to_update][baseline_step_value_index]) * 100) for value in output_data[field_to_update]]
 
 if __name__ == '__main__':
@@ -82,7 +82,7 @@ if __name__ == '__main__':
     # Get the server config as a dict
     base_server_config = dict_config_from_path(args.server_config)
     # Make a list of ClusterConfig objects with all the different modifications specified in the analysis_config file
-    all_server_config_data = generate_server_configs(base_server_config, analysis_config)
+    all_server_config_data = _generate_server_configs(base_server_config, analysis_config)
 
     # Create the dictionary, which will eventually be written to excel
     output_data = {'Field to Modify': [],
@@ -127,11 +127,11 @@ if __name__ == '__main__':
     baseline_step_value_index = [index for index, value in enumerate(output_data["Step Value"]) if value==1][0]
 
     # Compare outputs in output_data to the baseline values
-    output_data['RAM (% change from baseline)'] = compare_to_baseline_values('RAM (GB)', output_data, baseline_step_value_index)
-    output_data['CPU (% change from baseline)'] = compare_to_baseline_values('CPU (Total Cores)', output_data, baseline_step_value_index)
-    output_data['SAS Storage (% change from baseline)'] = compare_to_baseline_values('SAS Storage (TB)', output_data, baseline_step_value_index)
-    output_data['SSD Storage (% change from baseline)'] = compare_to_baseline_values('SSD Storage (TB)', output_data, baseline_step_value_index)
-    output_data['Total VMs (% change from baseline)'] = compare_to_baseline_values('Total VMs', output_data, baseline_step_value_index)
+    output_data['RAM (% change from baseline)'] = _compare_to_baseline_values('RAM (GB)', output_data, baseline_step_value_index)
+    output_data['CPU (% change from baseline)'] = _compare_to_baseline_values('CPU (Total Cores)', output_data, baseline_step_value_index)
+    output_data['SAS Storage (% change from baseline)'] = _compare_to_baseline_values('SAS Storage (TB)', output_data, baseline_step_value_index)
+    output_data['SSD Storage (% change from baseline)'] = _compare_to_baseline_values('SSD Storage (TB)', output_data, baseline_step_value_index)
+    output_data['Total VMs (% change from baseline)'] = _compare_to_baseline_values('Total VMs', output_data, baseline_step_value_index)
     output_data['Step Value (% change from baseline)'] = ['{}%'.format(val * 100) for val in output_data['Step Value']]
 
     # Convert the dictionary to a DataFrame and write to an excel spreadsheet
