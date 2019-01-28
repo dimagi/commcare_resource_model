@@ -127,12 +127,12 @@ if __name__ == '__main__':
     baseline_step_value_index = [index for index, value in enumerate(output_data["Step Value"]) if value==1][0]
 
     # Compare outputs in output_data to the baseline values
-    output_data['RAM (% change from baseline)'] = _compare_to_baseline_values('RAM (GB)', output_data, baseline_step_value_index)
-    output_data['CPU (% change from baseline)'] = _compare_to_baseline_values('CPU (Total Cores)', output_data, baseline_step_value_index)
-    output_data['SAS Storage (% change from baseline)'] = _compare_to_baseline_values('SAS Storage (TB)', output_data, baseline_step_value_index)
-    output_data['SSD Storage (% change from baseline)'] = _compare_to_baseline_values('SSD Storage (TB)', output_data, baseline_step_value_index)
-    output_data['Total VMs (% change from baseline)'] = _compare_to_baseline_values('Total VMs', output_data, baseline_step_value_index)
-    output_data['Step Value (% change from baseline)'] = ['{}%'.format(val * 100) for val in output_data['Step Value']]
+    output_data['RAM (% of baseline)'] = _compare_to_baseline_values('RAM (GB)', output_data, baseline_step_value_index)
+    output_data['CPU (% of baseline)'] = _compare_to_baseline_values('CPU (Total Cores)', output_data, baseline_step_value_index)
+    output_data['SAS Storage (% of baseline)'] = _compare_to_baseline_values('SAS Storage (TB)', output_data, baseline_step_value_index)
+    output_data['SSD Storage (% of baseline)'] = _compare_to_baseline_values('SSD Storage (TB)', output_data, baseline_step_value_index)
+    output_data['Total VMs (% of baseline)'] = _compare_to_baseline_values('Total VMs', output_data, baseline_step_value_index)
+    output_data['Step Value (% of baseline)'] = ['{}%'.format(val * 100) for val in output_data['Step Value']]
 
     # Convert the dictionary to a DataFrame and write to an excel spreadsheet
     output_dataframe = pd.DataFrame(data=output_data, index=output_data['Field to Modify'])
