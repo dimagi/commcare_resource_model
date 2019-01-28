@@ -7,7 +7,7 @@ import json
 import pandas as pd
 import tempfile
 
-from core.config import cluster_config_from_path, dict_config_from_path
+from core.config import cluster_config_from_path
 from core.generate import generate_usage_data, generate_service_data
 from core.output import write_raw_data, write_summary_comparisons, write_summary_data, write_raw_service_data
 from core.summarize import incremental_summaries, \
@@ -72,7 +72,6 @@ if __name__ == '__main__':
 
     parser = argparse.ArgumentParser('CommCare Cluster Model')
     parser.add_argument('server_config', help='Path to cluster config file')
-    parser.add_argument('-a', '--analysis_config', help='Path to analysis config file', required=False, )
     parser.add_argument('-o', '--output', help='Write output to Excel file at this path.')
     parser.add_argument('-s', '--service', help='Only output data for specific service.')
 
@@ -80,126 +79,56 @@ if __name__ == '__main__':
 
     pd.options.display.float_format = '{:.1f}'.format
 
-    if args.analysis_config:
-        analysis_config = dict_config_from_path(args.analysis_config)
+    server_config = cluster_config_from_path(args.server_config)
+    usage = generate_usage_data(server_config)
+    if args.service:
+        server_config.services = {
+            args.service: server_config.services[args.service]
+        }
 
-        # Get the server config as a dict
-        base_server_config = dict_config_from_path(args.server_config)
-        # Make a list of ClusterConfig objects with all the different modifications specified in the analysis_config file 
-        all_server_config_data = generate_server_configs(base_server_config, analysis_config)
+    service_data = generate_service_data(server_config, usage)
 
-        # Create the dictionary, which will eventually be written to excel
-        output_data = {'Field to Modify': [],
-                       'Subfield to Modify': [],
-                       'Step Value': [],
-                       'RAM (GB)': [],
-                       'CPU (Total Cores)': [],
-                       'SAS Storage (TB)': [],
-                       'SSD Storage (TB)': [],
-                       'Total VMs': [],}
-
-        # Generate server and usage data for each ClusterConfig object
-        for server_config_data in all_server_config_data:
-            server_config = server_config_data['model']
-            usage = generate_usage_data(server_config)
-            service_data = generate_service_data(server_config, usage)
-            summary_data = get_summary_data(server_config, service_data)
-
-            if server_config.summary_dates:
-                summary_dates = server_config.summary_date_vals
-            else:
-                summary_dates = [usage.iloc[-1].name]  # summarize at final date
-
-
-            date_list = list(usage.index.to_series())
-
-            summary = summarize_service_data(server_config, summary_data, summary_dates[0])
-            user_count = usage.loc[summary_dates[0]]['users']
-
-            # Append the dictionary entries with the calculated value for each ClusterConfig object
-            output_data['Field to Modify'].append(server_config_data['field_to_modify'])
-            output_data['Subfield to Modify'].append(server_config_data['subfield_to_modify'])
-            output_data['Step Value'].append(server_config_data['step_value'])
-
-            output_data['RAM (GB)'].append(summary[0].iloc[0]['RAM Total (GB)'])
-            output_data['CPU (Total Cores)'].append(summary[0].iloc[0]['Cores Total'])
-            output_data['SAS Storage (TB)'].append(summary[1].iloc[0]['Rounded Total (TB)'])
-            output_data['SSD Storage (TB)'].append(summary[1].iloc[1]['Rounded Total (TB)'])
-            output_data['Total VMs'].append(summary[0].iloc[0]['VMs Total'])
-
-        # Add dictionary entries which compare the values to the baseline value and display percentages
-        baseline_step_value_index = [index for index, value in enumerate(output_data["Step Value"]) if value==1][0]
-
-        # Compare outputs in output_data to the baseline values
-        output_data['RAM (% change from baseline)'] = compare_to_baseline_values('RAM (GB)', output_data, baseline_step_value_index)
-        output_data['CPU (% change from baseline)'] = compare_to_baseline_values('CPU (Total Cores)', output_data, baseline_step_value_index)
-        output_data['SAS Storage (% change from baseline)'] = compare_to_baseline_values('SAS Storage (TB)', output_data, baseline_step_value_index)
-        output_data['SSD Storage (% change from baseline)'] = compare_to_baseline_values('SSD Storage (TB)', output_data, baseline_step_value_index)
-        output_data['Total VMs (% change from baseline)'] = compare_to_baseline_values('Total VMs', output_data, baseline_step_value_index)
-        output_data['Step Value (% change from baseline)'] = ['{}%'.format(val * 100) for val in output_data['Step Value']]
-
-        # Convert the dictionary to a DataFrame and write to an excel spreadsheet
-        output_dataframe = pd.DataFrame(data=output_data, index=output_data['Field to Modify'])
-        writer = ExcelWriter(args.output)
-        with writer:
-            writer.write_data_frame(
-                data_frame=output_dataframe,
-                sheet_name='Server Sizing Analysis',
-                header='Server config: {}, Analysis Config: {}'.format(args.server_config, args.analysis_config),
-                index_label='Field getting modified'
-            )
-
+    if server_config.summary_dates:
+        summary_dates = server_config.summary_date_vals
     else:
-        server_config = cluster_config_from_path(args.server_config)
-        usage = generate_usage_data(server_config)
-        if args.service:
-            server_config.services = {
-                args.service: server_config.services[args.service]
-            }
+        summary_dates = [usage.iloc[-1].name]  # summarize at final date
 
-        service_data = generate_service_data(server_config, usage)
+    is_excel = bool(args.output)
+    if is_excel:
+        writer = ExcelWriter(args.output)
+    else:
+        writer = ConsoleWriter()
 
-        if server_config.summary_dates:
-            summary_dates = server_config.summary_date_vals
+    with writer:
+        summaries = {}
+        user_count = {}
+        date_list = list(usage.index.to_series())
+        summary_data = get_summary_data(server_config, service_data)
+        for date in summary_dates:
+            summaries[date] = summarize_service_data(server_config, summary_data, date)
+            user_count[date] = usage.loc[date]['users']
+
+        if len(summary_dates) == 1:
+            date = summary_dates[0]
+            summary_data_snapshot = summaries[date]
+            write_summary_data(server_config, writer, date, summary_data_snapshot, user_count[date])
         else:
-            summary_dates = [usage.iloc[-1].name]  # summarize at final date
+            summary_comparisons = compare_summaries(server_config, summaries)
+            incrementals = incremental_summaries(summary_comparisons, summary_dates)
+            write_summary_comparisons(server_config, writer, user_count, summary_comparisons)
+            write_summary_comparisons(server_config, writer, user_count, incrementals, prefix='Incremental ')
 
-        is_excel = bool(args.output)
+            for date in sorted(summaries):
+                write_summary_data(server_config, writer, date, summaries[date], user_count[date])
+
         if is_excel:
-            writer = ExcelWriter(args.output)
-        else:
-            writer = ConsoleWriter()
+            # only write raw data if writing to Excel
+            write_raw_data(writer, usage, 'Usage')
+            write_raw_service_data(writer, service_data, summary_data, 'Raw Data')
 
-        with writer:
-            summaries = {}
-            user_count = {}
-            date_list = list(usage.index.to_series())
-            summary_data = get_summary_data(server_config, service_data)
-            for date in summary_dates:
-                summaries[date] = summarize_service_data(server_config, summary_data, date)
-                user_count[date] = usage.loc[date]['users']
-
-            if len(summary_dates) == 1:
-                date = summary_dates[0]
-                summary_data_snapshot = summaries[date]
-                write_summary_data(server_config, writer, date, summary_data_snapshot, user_count[date])
-            else:
-                summary_comparisons = compare_summaries(server_config, summaries)
-                incrementals = incremental_summaries(summary_comparisons, summary_dates)
-                write_summary_comparisons(server_config, writer, user_count, summary_comparisons)
-                write_summary_comparisons(server_config, writer, user_count, incrementals, prefix='Incremental ')
-
-                for date in sorted(summaries):
-                    write_summary_data(server_config, writer, date, summaries[date], user_count[date])
-
-            if is_excel:
-                # only write raw data if writing to Excel
-                write_raw_data(writer, usage, 'Usage')
-                write_raw_service_data(writer, service_data, summary_data, 'Raw Data')
-
-                with open(args.server_config, 'r') as f:
-                    config_string = 'Git commit: {}\n\n{}'.format(
-                        get_git_revision_hash(),
-                        f.read()
-                    )
-                    writer.write_config_string(config_string)
+            with open(args.server_config, 'r') as f:
+                config_string = 'Git commit: {}\n\n{}'.format(
+                    get_git_revision_hash(),
+                    f.read()
+                )
+                writer.write_config_string(config_string)
