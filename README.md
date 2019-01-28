@@ -307,3 +307,46 @@ http://docs.basho.com/riak/kv/2.2.3/setup/planning/bitcask-capacity-calc/
 
 
 Approximate RAM Needed for Bitcask = (static bitcask per key overhead + estimated average bucket+key length in bytes) * estimate total number of keys * n_val
+
+# Analysis Model
+
+This server sensitivity analysis tool is used to analyze the effects of different fields (from the cluster config
+ file) on server sizing. The purpose of this is to determine how, for example, increasing the number of forms
+ submitted per month would affect the server requirements of the system.
+
+# Usage
+
+    # create virtual env and install requirements as described in the Cluster Model Usage section
+    
+    # run tool:
+    $ python run_analysis.py <path to cluster config file> -a <path to analysis file> -o <output xlsx filename>
+
+# Model overview
+This tool runs the [Cluster Model](#cluster-model) described above with different weights applied to specified fields in the cluster
+config file, and then compares the outputs. The values that are compared in the output are: RAM (GB), 
+CPU (Total Cores), SAS Storage (TB), SSD Storage (TB) and Total VMs. This shows the effect of a particular field
+on server requirements.
+
+# Analysis Configuration
+This tool takes in two config files. One defines the parameters of the model
+for the system (which is the same as described in [Configuration](#configuration)). The other defines the 
+parameters of the analysis. Here is an example config:
+
+```
+forms_monthly:
+  factor_start: .5
+  factor_end: 1.5
+  factor_step: .5
+  field_name: factor
+```
+
+| Key                  | Description |
+| -------------------- | ----------- |
+| forms_monthly        | This key, which in the example is `forms_monthly` is the name of the parameter being analyzed. |
+| factor_start         | This is the starting number in the multiplication factor list. |
+| factor_end           | This is the ending number in the multiplication factor list. |
+| factor_step		   | The step size of the multiplication factor list.|
+| field_name    	   | This is the name of the field (within the parameter) that is being varied. |
+
+
+
