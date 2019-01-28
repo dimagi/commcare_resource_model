@@ -112,7 +112,6 @@ if __name__ == '__main__':
 
 
             date_list = list(usage.index.to_series())
-            summary_data = get_summary_data(server_config, service_data)
 
             summary = summarize_service_data(server_config, summary_data, summary_dates[0])
             user_count = usage.loc[summary_dates[0]]['users']
