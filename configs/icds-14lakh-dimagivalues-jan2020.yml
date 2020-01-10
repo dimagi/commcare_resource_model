@@ -5,12 +5,12 @@ storage_display_unit: TB
 
 summary_dates:
 #  - '2019-08'
-  - '2020-09'  # 12 months from now
+  - '2020-02'  # 12 months from now
 
 vm_os_storage_gb: 70
 vm_os_storage_group: 'VM_os'
 
-sets_summary_date: '2020-09'
+sets_summary_date: '2020-02'
 sets:
   users:
     - name: 7lakh
@@ -46,7 +46,8 @@ usage:
       - ['20190301', 200000]
       - ['20190401', '20190501', 300000]
       - ['20190601', '20190801', 350000]
-      - ['20190901', '20200901', '{users}']
+      - ['20190901', '20191201', 600000]
+      - ['20200101', '20200201', '{users}']
 
   # LS User as a percent of total User
   ls_users:
@@ -57,14 +58,15 @@ usage:
   formplayer_users:
     model: 'date_range_value'
     ranges:
-      - ['20180901', '20200901', 1000]
+      - ['20180901', '20200201', 1000]
 
   forms_per_user:
     model: 'date_range_value'
     ranges:
       - ['20180901', '20190301', 200]
       - ['20190401', '20190801', 350]
-      - ['20190901', '20200901', '{forms_per_user}']
+      - ['20190901', '20191201', 400]
+      - ['20200101', '20200201', '{forms_per_user}']
 
   #Number of forms per user per month
   forms_monthly:
@@ -213,7 +215,8 @@ usage:
     ranges:
       - ['20180901', '20190301', 35]  # daily feeding
       - ['20190401', '20190801', 60]
-      - ['20190901', '20200901', 60]  # daily feeding + THR + AG
+      - ['20190901', '20191201', 60]
+      - ['20200101', '20200201', 60]  # daily feeding + THR + AG
   images_monthly:
     model: 'product'
     dependant_fields:
@@ -352,8 +355,8 @@ services:
       override_storage_buffer: 0
       override_estimation_buffer: 0
     process:
-      cores_per_node: 32
-      ram_per_node: 64
+      cores_per_node: 16
+      ram_per_node: 32
 
   pg_main:
     aggregation_key: PostgreSQL
@@ -425,7 +428,7 @@ services:
           unit_size: 675
     process:
       cores_per_node: 8
-      ram_per_node: 64
+      ram_per_node: 128 
 
   es_master:
     aggregation_key: Elasticsearch
@@ -674,7 +677,7 @@ services:
     min_storage_per_node: 50GB
     process:
       cores_per_node: 8
-      ram_per_node: 64
+      ram_per_node: 16
       ram_model:
         - referenced_field: 'users'
           unit_size: 50KB
