@@ -157,12 +157,13 @@ usage:
       - 'peak_other_requests_per_15min'
 
 services:
+  # db.m5.4xlarge
   pg_shards:
     # this should have standbys for HA
     usage_capacity_per_node: 25000
     include_ha_resources: False
     storage:
-      group: 'SSD'
+      group: 'RDS'
       data_models:
         - referenced_field: 'forms_total'
           unit_size: 1200
@@ -181,27 +182,29 @@ services:
         - referenced_field: 'sms_total'
           unit_size: 683
     process:
-      cores_per_node: 32
-      ram_per_node: 128
+      cores_per_node: 8
+      ram_per_node: 64
 
+  # r5a.xlarge
   pg_proxy:
     usage_capacity_per_node: 150000
     storage_scales_with_nodes: True
     storage:
-      group: 'VM_other'
+      group: 'EBS'
       static_baseline: 200GB
       override_storage_buffer: 0
       override_estimation_buffer: 0
     process:
-      cores_per_node: 16
-      ram_per_node: 64
+      cores_per_node: 4
+      ram_per_node: 32
 
+  # db.m5.xlarge
   pg_main:
     usage_capacity_per_node: 150000
     storage_scales_with_nodes: True
 #    min_nodes: 2
     storage:
-      group: 'SSD'
+      group: 'RDS'
       static_baseline: 250GB  # to account for other static tables
       data_models:
         - referenced_field: 'users'
@@ -211,14 +214,70 @@ services:
         - referenced_field: 'synclogs_total'  # adding here since we don't need an extra DB just for this
           unit_size: 210000
     process:
-      cores_per_node: 32
-      ram_per_node: 128
+      cores_per_node: 8
+      ram_per_node: 32
 
+  pg_ucr:
+    usage_capacity_per_node: 100000
+    storage_scales_with_nodes: True
+    static_number: 1
+    storage:
+      group: 'RDS'
+      data_models:
+        - referenced_field: 'cases_total'
+          unit_size: 5000  # inflated to account for others UCRs
+    process:
+      cores_per_node: 8
+      ram_per_node: 32
+
+  # db.m5.large
+  pg_synclog:
+    usage_capacity_per_node: 100000
+    storage_scales_with_nodes: True
+    static_number: 1
+    storage:
+      group: 'RDS'
+      data_models:
+        - referenced_field: 'cases_total'
+          unit_size: 5000  # inflated to account for others UCRs
+    process:
+      cores_per_node: 8
+      ram_per_node: 32
+
+  # db.m5.large
+  pg_formplayer:
+    usage_capacity_per_node: 100000
+    storage_scales_with_nodes: True
+    static_number: 1
+    storage:
+      group: 'RDS'
+      data_models:
+        - referenced_field: 'users'
+          unit_size: 2000
+    process:
+      cores_per_node: 8
+      ram_per_node: 32
+
+  # db.m5.large
+  pg_auditcare:
+    usage_capacity_per_node: 100000
+    storage_scales_with_nodes: True
+    static_number: 1
+    storage:
+      group: 'RDS'
+      data_models:
+        - referenced_field: 'kafka_changes'
+          unit_size: 1000
+    process:
+      cores_per_node: 8
+      ram_per_node: 32
+
+  # c6i.2xlarge
   couchdb:
     usage_capacity_per_node: 50000
     min_nodes: 3
     storage:
-      group: 'SSD'
+      group: 'EBS'
       redundancy_factor: 3
       static_baseline: 50GB  # to account for other databases
       override_storage_buffer: 0.8  # space for compaction
@@ -226,14 +285,15 @@ services:
         - referenced_field: 'users'
           unit_size: 600000   # disk size / doc count of icds @ 2017-12-13
     process:
-      cores_per_node: 16
-      ram_per_node: 64
+      cores_per_node: 8
+      ram_per_node: 16
 
+  # r5.2xlarge
   es_datanode:
     usage_capacity_per_node: 15000
     min_nodes: 2
     storage:
-      group: 'SAS'
+      group: 'EBS'
       redundancy_factor: 2
       data_models:
         - referenced_field: 'forms_total'
@@ -245,32 +305,47 @@ services:
         - referenced_field: 'sms_total'
           unit_size: 675
     process:
-      cores_per_node: 16
+      cores_per_node: 8
       ram_per_node: 64
 
+  # r5.xlarge
   es_master:
     static_number: 3
     storage_scales_with_nodes: True
     storage:
-      group: 'VM_other'
-      static_baseline: 100GB
+      group: 'EBS'
+      static_baseline: 40GB
       override_storage_buffer: 0
       override_estimation_buffer: 0
     process:
-      cores_per_node: 8
-      ram_per_node: 16
+      cores_per_node: 4
+      ram_per_node: 32
 
+  # r5.xlarge
+  es_master:
+    static_number: 2
+    storage_scales_with_nodes: True
+    storage:
+      group: 'EBS'
+      static_baseline: 250GB
+      override_storage_buffer: 0
+      override_estimation_buffer: 0
+    process:
+      cores_per_node: 4
+      ram_per_node: 32
+
+  #  t3.medium
   kafka:
     usage_capacity_per_node: 200000
     min_nodes: 3
     storage:
-      group: 'SAS'
+      group: 'EBS'
       data_models:
         - referenced_field: 'kafka_changes_total'
           unit_size: 500
     process:
-      cores_per_node: 16
-      ram_per_node: 32
+      cores_per_node: 2
+      ram_per_node: 4
 
   object_storage:
     aggregation_key: Object Storage
@@ -283,25 +358,27 @@ services:
           unit_size: 11000
 
   # cover other pillows that don't need to be scaled
+  # r5a.xlarge
   pillowtop_static:
-    aggregation_key: Application
+    aggregation_key: Pillowtop
     static_number: 1
     storage_scales_with_nodes: True
     process:
-      cores_per_node: 16
+      cores_per_node: 4
       ram_per_node: 32
     storage:
-      group: 'VM_other'
+      group: 'EBS'
       static_baseline: 100GB
       override_storage_buffer: 0
       override_estimation_buffer: 0
 
+  # r5a.xlarge
   pillowtop_cases:
-    aggregation_key: Application
+    aggregation_key: Pillowtop
     usage_field: 'case_transactions'
     storage_scales_with_nodes: True
     process:
-      cores_per_node: 16
+      cores_per_node: 4
       ram_per_node: 32
       cores_per_sub_process: 0.5
       ram_per_sub_process: 0.7
@@ -311,17 +388,18 @@ services:
         - name: 'CaseToElasticsearchPillow'
           capacity: 3000000
     storage:
-      group: 'VM_other'
+      group: 'EBS'
       static_baseline: 100GB
       override_storage_buffer: 0
       override_estimation_buffer: 0
 
+  # r5a.xlarge
   pillowtop_forms:
-    aggregation_key: Application
+    aggregation_key: Pillowtop
     usage_field: 'forms_monthly'
     storage_scales_with_nodes: True
     process:
-      cores_per_node: 16
+      cores_per_node: 4
       ram_per_node: 32
       cores_per_sub_process: 0.5
       ram_per_sub_process: 0.7
@@ -333,51 +411,35 @@ services:
         - name: 'kafka-ucr-static-forms'
           capacity: 2000000   # this is largely dependent on the UCR DB performance
     storage:
-      group: 'VM_other'
-      static_baseline: 100GB
-      override_storage_buffer: 0
-      override_estimation_buffer: 0
-
-  # queues that scale with # users
-  celery_users:
-    aggregation_key: Application
-    storage_scales_with_nodes: True
-    process:
-      cores_per_node: 16
-      ram_per_node: 32
-      cores_per_sub_process: 1
-      ram_per_sub_process: 0.7
-      sub_processes:
-        - name: 'submission_reprocessing_queue'
-          capacity: 100000  # not really true but OK
-    storage:
-      group: 'VM_other'
+      group: 'EBS'
       static_baseline: 100GB
       override_storage_buffer: 0
       override_estimation_buffer: 0
 
   # cover other celery queues that don't need to be scaled
+  # r5.2xlarge
   celery_static:
-    aggregation_key: Application
-    static_number: 3
+    aggregation_key: Celery
+    static_number: 1
     storage_scales_with_nodes: True
     process:
-      cores_per_node: 16
-      ram_per_node: 32
+      cores_per_node: 8
+      ram_per_node: 64
     storage:
-      group: 'VM_other'
+      group: 'EBS'
       static_baseline: 100GB
       override_storage_buffer: 0
       override_estimation_buffer: 0
 
   # queues that scale with case transactions
+  # r5.2xlarge
   celery_cases:
-    aggregation_key: Application
+    aggregation_key: Celery
     usage_field: 'case_transactions'
     storage_scales_with_nodes: True
     process:
-      cores_per_node: 16
-      ram_per_node: 32
+      cores_per_node: 8
+      ram_per_node: 64
       cores_per_sub_process: 0.6  # reduced from 1 since we use django VMs as well
       ram_per_sub_process: 0.5  # reduced from 0.7 since we use django VMs as well
       sub_processes:
@@ -386,19 +448,20 @@ services:
         - name: 'ucr_indicator_queue'
           capacity: 2500000  # 2.5M per worker only processes ~50% of cases (ccs_record / child_cases)
     storage:
-      group: 'VM_other'
+      group: 'EBS'
       static_baseline: 100GB
       override_storage_buffer: 0
       override_estimation_buffer: 0
 
+  # r5.2xlarge
   celery_sms:
     # https://docs.google.com/spreadsheets/d/18La8-RZkkjOJ3uhwmJVXK9LLOc0dP5esQETgQ8eqcGw/edit#gid=126849162 ("Load supported per worker" table)
-    aggregation_key: Application
+    aggregation_key: Celery
     usage_field: 'sms_monthly'
     storage_scales_with_nodes: True
     process:
-      cores_per_node: 16
-      ram_per_node: 32
+      cores_per_node: 8
+      ram_per_node: 64
       cores_per_sub_process: 1
       ram_per_sub_process: 0.7
       sub_processes:
@@ -407,25 +470,47 @@ services:
         - name: 'sms_queue'
           capacity: 400000
     storage:
-      group: 'VM_other'
+      group: 'EBS'
       static_baseline: 100GB
       override_storage_buffer: 0
       override_estimation_buffer: 0
 
-  web:
-    aggregation_key: Application
+  # c5.2xlarge
+  web_general:
+    aggregation_key: Web
     usage_field: 'preak_requests_per_15_min'
     storage_scales_with_nodes: True
+    min_nodes: 3
     process:
-      cores_per_node: 16
-      ram_per_node: 32
+      cores_per_node: 8
+      ram_per_node: 16
       cores_per_sub_process: 0.7
       ram_per_sub_process: 0.7
       sub_processes:
         - name: 'gunicorn_worker'
           capacity: 1080  # 1080 requests per 15 min (1 per s) - Forecast from current throughput
     storage:
-      group: 'VM_other'
+      group: 'EBS'
+      static_baseline: 100GB
+      override_storage_buffer: 0
+      override_estimation_buffer: 0
+
+  # c5.2xlarge
+  web_formplayer:
+    aggregation_key: Web
+    usage_field: 'preak_requests_per_15_min'
+    storage_scales_with_nodes: True
+    min_nodes: 3
+    process:
+      cores_per_node: 8
+      ram_per_node: 16
+      cores_per_sub_process: 0.7
+      ram_per_sub_process: 0.7
+      sub_processes:
+        - name: 'gunicorn_worker'
+          capacity: 1080  # 1080 requests per 15 min (1 per s) - Forecast from current throughput
+    storage:
+      group: 'EBS'
       static_baseline: 100GB
       override_storage_buffer: 0
       override_estimation_buffer: 0
@@ -435,61 +520,65 @@ services:
     usage_capacity_per_node: 250000
     usage_field: 'preak_requests_per_15_min'
     min_storage_per_node: 50GB
+    min_nodes: 3
     process:
-      cores_per_node: 8
-      ram_per_node: 64
+      cores_per_node: 2
+      ram_per_node: 16
       ram_model:
         - referenced_field: 'users'
           unit_size: 50KB
       ram_static_baseline: 33  # per node (assume only 50% ram is usable)
     storage:
-      group: 'SAS'
+      group: 'EBS'
       data_models:
         - referenced_field: 'users'
           unit_size: 50KB
 
+  # t3.large
   nginx:  # limits for nginx not clear
     aggregation_key: Proxy
-    usage_capacity_per_node: 500000
+    static_number: 2
     storage_scales_with_nodes: True
     process:
-      cores_per_node: 16
-      ram_per_node: 32
+      cores_per_node: 2
+      ram_per_node: 8
     storage:
-      group: 'VM_other'
+      group: 'EBS'
       static_baseline: 200GB  # logs etc
       override_storage_buffer: 0
       override_estimation_buffer: 0
 
+  # m5.xlarge
   rabbitmq:  # limits for rabbitmq not clear
     aggregation_key: Message Queue
-    static_number: 1
+    static_number: 2
     storage_scales_with_nodes: True
     process:
-      cores_per_node: 32
-      ram_per_node: 64
+      cores_per_node: 4
+      ram_per_node: 16
     storage:  # don't have a model for rabbitmq storage
-      group: 'SAS'
-      static_baseline: 100GB
+      group: 'EBS'
+      static_baseline: 80GB
       override_storage_buffer: 0
       override_estimation_buffer: 0
 
+  # m5a.4xlarge
   formplayer:
-    aggregation_key: Application
-    usage_capacity_per_node: 500
+    aggregation_key: Formplayer
+    usage_capacity_per_node: 2000
     process:
-      cores_per_node: 8
-      ram_per_node: 16
+      cores_per_node: 16
+      ram_per_node: 64
     storage:
-      group: 'SAS'
+      group: 'EBS'
       data_models:
         - referenced_field: 'users'
-          unit_size: 200MB
+          unit_size: 60MB
 
   control:
     static_number: 1
     storage:
-      group: 'VM_other'
+      group: 'EBS'
       static_baseline: 100GB
       override_storage_buffer: 0
       override_estimation_buffer: 0
