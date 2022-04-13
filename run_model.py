@@ -38,6 +38,10 @@ def get_combined_sets(sets):
                 else:
                     name += f'-{item_name}'
         context['name'] = name
+        for key, val in context.items():
+            if key != 'name' and isinstance(val, str):
+                context[key] = eval(val, None, context)
+
         combined_sets.append(context)
     return combined_sets
 
