@@ -19,6 +19,7 @@ def models_by_slug():
         DerivedSum,
         DerivedProduct,
         DerivedFactor,
+        InvertDerivedFactor,
         BaselineWithGrowth,
     ]
 
@@ -182,6 +183,22 @@ class DerivedFactor(DerivedModel):
             return val * self.factor
 
         return _mul
+
+
+class InvertDerivedFactor(DerivedModel):
+    """Multiply a single other field by a static factor"""
+    slug = 'invert_derived_factor'
+
+    def __init__(self, context, name, dependant_field, factor, start_with=0):
+        super(InvertDerivedFactor, self).__init__(context, name, [dependant_field], start_with)
+        self.factor = apply_context(context, factor, float)
+
+    @property
+    def func(self):
+        def _div(val, **kwargs):
+            return val / self.factor
+
+        return _div
 
 
 class BaselineWithGrowth(DFModel):
