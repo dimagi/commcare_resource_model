@@ -1,4 +1,4 @@
 pandas
 pyaml
 XlsxWriter
-jsonobject==0.7.1
+jsonobject==0.7.1  # upgrading breaks something
