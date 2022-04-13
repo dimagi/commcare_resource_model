@@ -88,7 +88,7 @@ class CumulativeModel(DFModel):
         self.context = context
         self.name = name
         self.dependant_field = dependant_field
-        self.start_with = start_with
+        self.start_with = apply_context(context, start_with, int)
 
     @property
     def dependant_fields(self):
@@ -134,7 +134,7 @@ class DerivedModel(DFModel):
         self.context = context
         self.name = name
         self._dependant_fields = dependant_fields
-        self.start_with = start_with
+        self.start_with = apply_context(context, start_with, int)
 
     @property
     def dependant_fields(self):
